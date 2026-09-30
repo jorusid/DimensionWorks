@@ -24,6 +24,23 @@ const dwRetiredStressStorageItems = [
   'appliedcreate:creative_stress_cell'
 ]
 
+const dwRetiredMekanismStorageItems = [
+  'mekanism:basic_energy_cube',
+  'mekanism:advanced_energy_cube',
+  'mekanism:elite_energy_cube',
+  'mekanism:ultimate_energy_cube',
+  'mekanism:creative_energy_cube',
+  'mekanism:energy_tablet',
+  'mekanism:basic_induction_cell',
+  'mekanism:advanced_induction_cell',
+  'mekanism:elite_induction_cell',
+  'mekanism:ultimate_induction_cell',
+  'mekanism:basic_induction_provider',
+  'mekanism:advanced_induction_provider',
+  'mekanism:elite_induction_provider',
+  'mekanism:ultimate_induction_provider'
+]
+
 const dwMemoryCardTypes = [
   'economy',
   'balanced',
@@ -50,4 +67,8 @@ for (let tier = 1; tier <= 5; tier++) {
 StartupEvents.modifyCreativeTab('appliedcreate:main', event => {
   dwRetiredStressStorageItems.forEach(id => event.remove(id))
   dwMemoryItems.forEach(id => event.add(id))
+})
+
+StartupEvents.modifyCreativeTab('mekanism:main', event => {
+  dwRetiredMekanismStorageItems.forEach(id => event.remove(id))
 })

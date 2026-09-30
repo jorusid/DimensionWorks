@@ -13,7 +13,7 @@ class JadeEnergySanitizerTest {
     void removesEnergyEntryForEligibleMachine() {
         CompoundTag data = dataWithTextAndEnergy();
 
-        assertTrue(JadeEnergySanitizer.removeEnergyElements(data, true));
+        assertTrue(JadeEnergySanitizer.removeEnergyElements(data));
         ListTag remaining = data.getList("mekData", CompoundTag.TAG_COMPOUND);
         assertEquals(1, remaining.size());
         assertTrue(remaining.getCompound(0).contains("text"));
@@ -21,11 +21,11 @@ class JadeEnergySanitizerTest {
     }
 
     @Test
-    void leavesEnergyEntryForIneligibleMachine() {
+    void removesEnergyForEveryMekanismMachine() {
         CompoundTag data = dataWithTextAndEnergy();
 
-        assertFalse(JadeEnergySanitizer.removeEnergyElements(data, false));
-        assertEquals(2, data.getList("mekData", CompoundTag.TAG_COMPOUND).size());
+        assertTrue(JadeEnergySanitizer.removeEnergyElements(data));
+        assertEquals(1, data.getList("mekData", CompoundTag.TAG_COMPOUND).size());
     }
 
     private static CompoundTag dataWithTextAndEnergy() {

@@ -150,8 +150,11 @@ public final class MemoryGridService implements IMemoryGridService, IStorageProv
 
         boolean poweredStatus = status == MemoryNetworkStatus.OK;
         boolean hasDemand = demandSu > 0L && demandRpm > 0L;
+        long requiredSu = hasDemand
+            ? NetworkMath.requiredSuForRpm(demandSu, bandwidth, demandRpm)
+            : 0L;
         double stockQ = poweredStatus && hasDemand
-            ? NetworkMath.stockRatio(stored, demandSu)
+            ? NetworkMath.suGate(stored, requiredSu)
             : 0.0D;
         double bandwidthQ = poweredStatus && hasDemand
             ? NetworkMath.rpmQ(bandwidth, demandRpm)
@@ -286,7 +289,10 @@ public final class MemoryGridService implements IMemoryGridService, IStorageProv
         long demandSu = lastSnapshot.demandSuPerTick();
         long demandRpm = lastSnapshot.demandRpm();
         boolean hasDemand = demandSu > 0L && demandRpm > 0L;
-        double stockQ = hasDemand ? NetworkMath.stockRatio(stored, demandSu) : 0.0D;
+        long requiredSu = hasDemand
+            ? NetworkMath.requiredSuForRpm(demandSu, lastSnapshot.bandwidthRpm(), demandRpm)
+            : 0L;
+        double stockQ = hasDemand ? NetworkMath.suGate(stored, requiredSu) : 0.0D;
         double bandwidthQ = hasDemand ? NetworkMath.rpmQ(lastSnapshot.bandwidthRpm(), demandRpm) : 0.0D;
         double q = lastSnapshot.status() == MemoryNetworkStatus.OK
             ? NetworkMath.availableQ(stored, demandSu, lastSnapshot.bandwidthRpm(), demandRpm)

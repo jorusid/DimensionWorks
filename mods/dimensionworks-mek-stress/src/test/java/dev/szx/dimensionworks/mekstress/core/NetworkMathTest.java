@@ -16,8 +16,13 @@ class NetworkMathTest {
 
     @Test
     void usesTheLowerOfInventoryAndBandwidth() {
-        assertEquals(0.5D, NetworkMath.finalQ(NetworkMath.stockRatio(100L, 200L), 1.0D), 1.0E-9D);
-        assertEquals(0.25D, NetworkMath.finalQ(1.0D, NetworkMath.bandwidthRatio(25L, 100L)), 1.0E-9D);
+        double rpmQ = NetworkMath.rpmQ(512L, 1_024L);
+        long requiredSu = NetworkMath.requiredSuForRpm(200L, 512L, 1_024L);
+        assertEquals(100L, requiredSu);
+        assertEquals(0.5D, rpmQ, 1.0E-9D);
+        assertEquals(0.0D, NetworkMath.suGate(99L, requiredSu), 1.0E-9D);
+        assertEquals(1.0D, NetworkMath.suGate(100L, requiredSu), 1.0E-9D);
+        assertEquals(rpmQ, NetworkMath.finalQ(1.0D, rpmQ), 1.0E-9D);
     }
 
     @Test
@@ -28,16 +33,16 @@ class NetworkMathTest {
 
     @Test
     void handlesZeroInventoryAndExactCapacity() {
-        assertEquals(0.0D, NetworkMath.stockRatio(0L, 100L), 1.0E-9D);
-        assertEquals(1.0D, NetworkMath.stockRatio(100L, 100L), 1.0E-9D);
+        assertEquals(0.0D, NetworkMath.suGate(0L, 100L), 1.0E-9D);
+        assertEquals(1.0D, NetworkMath.suGate(100L, 100L), 1.0E-9D);
         assertEquals(0.0D, NetworkMath.bandwidthQ(0L, 100L), 1.0E-9D);
         assertEquals(1.0D, NetworkMath.bandwidthQ(100L, 100L), 1.0E-9D);
     }
 
     @Test
     void keepsRawRatiosNeutralButAvailableQRequiresDemand() {
-        assertEquals(1.0D, NetworkMath.stockRatio(0L, 0L), 1.0E-9D);
-        assertEquals(1.0D, NetworkMath.bandwidthQ(0L, 0L), 1.0E-9D);
+        assertEquals(0.0D, NetworkMath.suGate(0L, 0L), 1.0E-9D);
+        assertEquals(0.0D, NetworkMath.bandwidthQ(0L, 0L), 1.0E-9D);
         assertEquals(1.0D, NetworkMath.finalQ(1.0D, 1.0D), 1.0E-9D);
         assertEquals(0.0D, NetworkMath.availableQ(0L, 0L, 0L, 0L), 1.0E-9D);
     }
@@ -48,14 +53,15 @@ class NetworkMathTest {
         assertEquals(0.0D, NetworkMath.availableQ(100L, 100L, 0L, 256L), 1.0E-9D);
         assertEquals(0.0D, NetworkMath.availableQ(100L, 0L, 1_024L, 256L), 1.0E-9D);
         assertEquals(0.0D, NetworkMath.availableQ(100L, 100L, 1_024L, 0L), 1.0E-9D);
-        assertEquals(0.5D, NetworkMath.availableQ(100L, 200L, 1_024L, 512L), 1.0E-9D);
+        assertEquals(0.0D, NetworkMath.availableQ(99L, 200L, 1_024L, 512L), 1.0E-9D);
+        assertEquals(0.5D, NetworkMath.availableQ(100L, 200L, 512L, 1_024L), 1.0E-9D);
         assertEquals(1.0D, NetworkMath.availableQ(200L, 200L, 1_024L, 512L), 1.0E-9D);
     }
 
     @Test
-    void stopsTheNetworkBelowSixtyPercentRpmCoverage() {
-        assertEquals(0.0D, NetworkMath.rpmQ(599L, 1_000L), 1.0E-9D);
-        assertEquals(0.6D, NetworkMath.rpmQ(600L, 1_000L), 1.0E-9D);
+    void scalesRpmContinuouslyWithoutASixtyPercentCutoff() {
+        assertEquals(0.001D, NetworkMath.rpmQ(1L, 1_000L), 1.0E-9D);
+        assertEquals(0.599D, NetworkMath.rpmQ(599L, 1_000L), 1.0E-9D);
         assertEquals(0.75D, NetworkMath.rpmQ(768L, 1_024L), 1.0E-9D);
         assertEquals(1.0D, NetworkMath.rpmQ(2_048L, 1_024L), 1.0E-9D);
         assertEquals(0.0D, NetworkMath.rpmQ(0L, 1_024L), 1.0E-9D);
@@ -63,8 +69,10 @@ class NetworkMathTest {
     }
 
     @Test
-    void combinesStockAndGatedRpmFactors() {
-        assertEquals(0.5D, NetworkMath.availableQ(100L, 200L, 768L, 1_024L), 1.0E-9D);
-        assertEquals(0.0D, NetworkMath.availableQ(100L, 200L, 512L, 1_024L), 1.0E-9D);
+    void combinesStockAndRpmFactorsWithoutBorrowingSu() {
+        assertEquals(0.75D, NetworkMath.availableQ(150L, 200L, 768L, 1_024L), 1.0E-9D);
+        assertEquals(0.0D, NetworkMath.availableQ(149L, 200L, 768L, 1_024L), 1.0E-9D);
+        assertEquals(0.599D, NetworkMath.availableQ(120L, 200L, 599L, 1_000L), 1.0E-9D);
+        assertEquals(0.0D, NetworkMath.availableQ(119L, 200L, 599L, 1_000L), 1.0E-9D);
     }
 }

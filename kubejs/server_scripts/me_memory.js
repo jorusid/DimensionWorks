@@ -32,6 +32,26 @@ const retiredAppliedCreateItems = [
   'appliedcreate:creative_stress_cell'
 ]
 
+const retiredMekanismStorageItems = [
+  'mekanism:basic_energy_cube',
+  'mekanism:advanced_energy_cube',
+  'mekanism:elite_energy_cube',
+  'mekanism:ultimate_energy_cube',
+  'mekanism:creative_energy_cube',
+  'mekanism:energy_tablet',
+  'mekanism:basic_induction_cell',
+  'mekanism:advanced_induction_cell',
+  'mekanism:elite_induction_cell',
+  'mekanism:ultimate_induction_cell',
+  'mekanism:basic_induction_provider',
+  'mekanism:advanced_induction_provider',
+  'mekanism:elite_induction_provider',
+  'mekanism:ultimate_induction_provider'
+]
+
+const retiredMekanismStorageItemSet = new Set(retiredMekanismStorageItems)
+const retiredMekanismRecipeMaterialReplacement = '#mekanism:alloys/infused'
+
 ServerEvents.recipes(event => {
   memoryTiers.forEach(definition => {
     const tier = definition.tier
@@ -102,23 +122,25 @@ ServerEvents.recipes(event => {
   }
 
   retiredAppliedCreateItems.forEach(id => event.remove({ output: id }))
+  retiredMekanismStorageItems.forEach(id => event.remove({ output: id }))
+  event.replaceInput({}, 'mekanism:energy_tablet', retiredMekanismRecipeMaterialReplacement)
   event.remove({ id: 'appliedcreate:creative_motor_from_stress_cell' })
 })
 
 ItemEvents.canPickUp(event => {
-  if (retiredAppliedCreateItems.includes(event.item.id)) {
+  if (retiredAppliedCreateItems.includes(event.item.id) || retiredMekanismStorageItemSet.has(event.item.id)) {
     event.cancel()
   }
 })
 
 ItemEvents.rightClicked(event => {
-  if (retiredAppliedCreateItems.includes(event.item.id)) {
+  if (retiredAppliedCreateItems.includes(event.item.id) || retiredMekanismStorageItemSet.has(event.item.id)) {
     event.cancel()
   }
 })
 
 PlayerEvents.inventoryChanged(event => {
-  if (retiredAppliedCreateItems.includes(event.item.id)) {
+  if (retiredAppliedCreateItems.includes(event.item.id) || retiredMekanismStorageItemSet.has(event.item.id)) {
     event.item.setCount(0)
   }
 })

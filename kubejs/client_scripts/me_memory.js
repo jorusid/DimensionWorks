@@ -24,6 +24,24 @@ const retiredAppliedCreateItems = [
   'appliedcreate:creative_stress_cell'
 ]
 
+const retiredMekanismStorageItems = [
+  'mekanism:basic_energy_cube',
+  'mekanism:advanced_energy_cube',
+  'mekanism:elite_energy_cube',
+  'mekanism:ultimate_energy_cube',
+  'mekanism:creative_energy_cube',
+  'mekanism:energy_tablet',
+  'mekanism:basic_induction_cell',
+  'mekanism:advanced_induction_cell',
+  'mekanism:elite_induction_cell',
+  'mekanism:ultimate_induction_cell',
+  'mekanism:basic_induction_provider',
+  'mekanism:advanced_induction_provider',
+  'mekanism:elite_induction_provider',
+  'mekanism:ultimate_induction_provider'
+]
+
 JEIEvents.hideItems(event => {
   retiredAppliedCreateItems.forEach(id => event.hide(id))
+  retiredMekanismStorageItems.forEach(id => event.hide(id))
 })

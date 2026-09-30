@@ -2,8 +2,6 @@ package dev.szx.dimensionworks.mekstress.core;
 
 /** Pure math for ME network congestion and production scaling. */
 public final class NetworkMath {
-    public static final double MIN_RPM_SCALE = 0.6D;
-
     private NetworkMath() {
     }
 
@@ -14,14 +12,24 @@ public final class NetworkMath {
         return Math.min(1.0D, ratio);
     }
 
-    public static double stockRatio(long storedSu, long demandSuPerTick) {
-        if (demandSuPerTick <= 0L) {
-            return 1.0D;
+    /** SU demanded at the RPM coverage actually available this tick. */
+    public static long requiredSuForRpm(long demandSuPerTick, long bandwidthRpm, long demandRpm) {
+        if (demandSuPerTick <= 0L || bandwidthRpm <= 0L || demandRpm <= 0L) {
+            return 0L;
         }
-        if (storedSu <= 0L) {
+        double scaled = (double) demandSuPerTick * rpmQ(bandwidthRpm, demandRpm);
+        if (!Double.isFinite(scaled) || scaled <= 0.0D) {
+            return 0L;
+        }
+        return scaled >= (double) Long.MAX_VALUE ? Long.MAX_VALUE : (long) Math.ceil(scaled);
+    }
+
+    /** Binary SU gate: the demand for this tick is either available or it is not. */
+    public static double suGate(long storedSu, long requiredSu) {
+        if (storedSu <= 0L || requiredSu <= 0L) {
             return 0.0D;
         }
-        return clampRatio((double) storedSu / (double) demandSuPerTick);
+        return storedSu >= requiredSu ? 1.0D : 0.0D;
     }
 
     /**
@@ -38,22 +46,14 @@ public final class NetworkMath {
 
     /** Actual q_bw: min(1, bandwidth / demand). */
     public static double bandwidthQ(long bandwidthRpm, long demandRpm) {
-        if (demandRpm <= 0L) {
-            return 1.0D;
-        }
-        return clampRatio((double) bandwidthRpm / (double) demandRpm);
+        return rpmQ(bandwidthRpm, demandRpm);
     }
 
-    /** RPM coverage is throttled proportionally and cut off below 60%. */
     public static double rpmQ(long bandwidthRpm, long demandRpm) {
         if (bandwidthRpm <= 0L || demandRpm <= 0L) {
             return 0.0D;
         }
-        double ratio = (double) bandwidthRpm / (double) demandRpm;
-        if (ratio < MIN_RPM_SCALE) {
-            return 0.0D;
-        }
-        return Math.min(1.0D, ratio);
+        return clampRatio((double) bandwidthRpm / (double) demandRpm);
     }
 
     public static double finalQ(double stockQ, double bandwidthQ) {
@@ -62,12 +62,9 @@ public final class NetworkMath {
 
     /** Mechanical power is available only when both SU stock and RPM bandwidth exist. */
     public static double availableQ(long storedSu, long demandSuPerTick, long bandwidthRpm, long demandRpm) {
-        if (storedSu <= 0L || demandSuPerTick <= 0L || bandwidthRpm <= 0L || demandRpm <= 0L) {
-            return 0.0D;
-        }
-        return finalQ(
-            stockRatio(storedSu, demandSuPerTick),
-            rpmQ(bandwidthRpm, demandRpm));
+        double rpmQ = rpmQ(bandwidthRpm, demandRpm);
+        long requiredSu = requiredSuForRpm(demandSuPerTick, bandwidthRpm, demandRpm);
+        return finalQ(suGate(storedSu, requiredSu), rpmQ);
     }
 
     public static double efficiency(double q, double exponent) {

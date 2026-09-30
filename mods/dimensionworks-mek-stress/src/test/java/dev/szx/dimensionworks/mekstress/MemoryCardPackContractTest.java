@@ -100,10 +100,10 @@ class MemoryCardPackContractTest {
         String build = Files.readString(Path.of("build.gradle"));
         String modsToml = Files.readString(Path.of("src/main/resources/META-INF/mods.toml"));
         String manifest = Files.readString(Path.of("..", "..", "manifest", "mods.json"));
-        assertTrue(build.contains("version = '0.3.0'"));
-        assertTrue(modsToml.contains("version=\"0.3.0\""));
+        assertTrue(build.contains("version = '0.3.1'"));
+        assertTrue(modsToml.contains("version=\"0.3.1\""));
         assertTrue(manifest.contains("\"id\": \"dimensionworks_mek_stress\""));
-        assertTrue(manifest.contains("\"version\": \"0.3.0\""));
+        assertTrue(manifest.contains("\"version\": \"0.3.1\""));
     }
 
     private static void assertLang(Path path) throws IOException {

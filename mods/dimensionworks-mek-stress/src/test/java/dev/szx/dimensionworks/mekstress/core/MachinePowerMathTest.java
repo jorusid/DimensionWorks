@@ -33,4 +33,13 @@ class MachinePowerMathTest {
         assertEquals(2.0F, MachinePowerMath.stressPerRpm(0.25F), 1.0E-6F);
         assertEquals(0.0F, MachinePowerMath.stressPerRpm(-1.0F), 1.0E-6F);
     }
+
+    @Test
+    void scalesWorkWithRpmAndCapsAtTargetSpeed() {
+        assertEquals(0.0D, MachinePowerMath.workRate(0, 4_096), 1.0E-9D);
+        assertEquals(0.25D, MachinePowerMath.workRate(1_024, 4_096), 1.0E-9D);
+        assertEquals(1.0D, MachinePowerMath.workRate(4_096, 4_096), 1.0E-9D);
+        assertEquals(1.0D, MachinePowerMath.workRate(8_192, 4_096), 1.0E-9D);
+        assertEquals(0.0D, MachinePowerMath.workRate(4_096, 0), 1.0E-9D);
+    }
 }

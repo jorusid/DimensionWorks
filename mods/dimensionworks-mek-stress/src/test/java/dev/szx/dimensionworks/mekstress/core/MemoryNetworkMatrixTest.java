@@ -34,7 +34,8 @@ class MemoryNetworkMatrixTest {
                 long demandSu = demandRpm * 8L;
                 double suUtilization = utilization(demandSu, capacity);
                 double bandwidthUtilization = utilization(demandRpm, bandwidth);
-                double qStock = NetworkMath.stockRatio(capacity, demandSu);
+                long requiredSu = NetworkMath.requiredSuForRpm(demandSu, bandwidth, demandRpm);
+                double qStock = NetworkMath.suGate(capacity, requiredSu);
                 double qBandwidth = NetworkMath.bandwidthQ(bandwidth, demandRpm);
                 double q = NetworkMath.finalQ(qStock, qBandwidth);
                 double production = NetworkMath.productionRate(1.0D, q, 1.25D);
@@ -66,7 +67,9 @@ class MemoryNetworkMatrixTest {
         assertEquals(1_966_080L, terminal.demandSu());
         assertEquals(1.0D, NetworkMath.bandwidthQ(MemoryTier.DDR5.totalBandwidthRpm(), terminal.demandRpm()),
             1.0E-9D);
-        assertEquals(1.0D, NetworkMath.stockRatio(MemoryTier.DDR5.totalCapacitySu(), terminal.demandSu()),
+        assertEquals(1.0D, NetworkMath.suGate(MemoryTier.DDR5.totalCapacitySu(),
+            NetworkMath.requiredSuForRpm(terminal.demandSu(), MemoryTier.DDR5.totalBandwidthRpm(),
+                terminal.demandRpm())),
             1.0E-9D);
         assertEquals(0.9375D, utilization(terminal.demandRpm(), MemoryTier.DDR5.totalBandwidthRpm()), 1.0E-9D);
         assertEquals(0.9375D, utilization(terminal.demandSu(), MemoryTier.DDR5.totalCapacitySu()), 1.0E-9D);

@@ -6,6 +6,7 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import dev.szx.dimensionworks.mekstress.MekStressConfig;
 import dev.szx.dimensionworks.mekstress.api.IMEGearboxExportState;
 import dev.szx.dimensionworks.mekstress.core.MachinePowerMath;
+import dev.szx.dimensionworks.mekstress.core.PowerRouteSafety;
 import dev.szx.dimensionworks.mekstress.core.MachineTier;
 import dev.szx.dimensionworks.rpmlimit.RpmLimitManager;
 import java.util.ArrayList;
@@ -56,7 +57,15 @@ public final class MachinePowerManager {
     }
 
     public static boolean hasMechanicalPower(TileEntityMekanism tile) {
-        return currentRpm(tile) > 0;
+        return hasMechanicalPower(powerRoute(tile));
+    }
+
+    public static boolean hasMechanicalPower(@Nullable DirectSource route) {
+        if (route == null) {
+            return false;
+        }
+        return PowerRouteSafety.hasMechanicalPower(
+            true, route.running(), route.rpm(), routeStillPresent(route), route.source().isOverStressed());
     }
 
     public static double workRate(TileEntityMekanism tile) {
@@ -66,12 +75,12 @@ public final class MachinePowerManager {
     public static double workRate(TileEntityMekanism tile, @Nullable DirectSource route) {
         int rpm = currentRpm(route);
         int tierRpm = MekStressConfig.machineRpm(tier(tile));
-        return rpm <= 0 || tierRpm <= 0 ? 0.0D : (double) rpm / tierRpm;
+        return hasMechanicalPower(route) ? MachinePowerMath.workRate(rpm, tierRpm) : 0.0D;
     }
 
     public static boolean consumeForProcessing(TileEntityMekanism tile) {
         DirectSource route = powerRoute(tile);
-        return route != null && currentRpm(route) > 0 && !route.source().isOverStressed();
+        return hasMechanicalPower(route);
     }
 
     @Nullable
@@ -96,8 +105,14 @@ public final class MachinePowerManager {
 
             boolean running = isExportRunning(gearbox);
             float rpm = running ? effectiveKineticRpm(kinetic, gearbox) : 0.0F;
+            DirectSource candidate = new DirectSource(kinetic, gearbox, rpm, running && rpm > 0.0F);
+            if (!routeStillPresent(candidate)) {
+                rpm = 0.0F;
+                running = false;
+                candidate = new DirectSource(kinetic, gearbox, 0.0F, false);
+            }
             if (best == null || rpm > bestRpm) {
-                best = new DirectSource(kinetic, gearbox, rpm, running && rpm > 0.0F);
+                best = candidate;
                 bestRpm = rpm;
             }
         }
@@ -122,9 +137,11 @@ public final class MachinePowerManager {
             return;
         }
         GlobalPos machine = GlobalPos.of(level.dimension(), tile.getBlockPos());
-        DirectStressRegistry.Change change = route == null
-            ? DirectStressRegistry.clear(machine)
-            : DirectStressRegistry.assign(machine, route.source(), MachinePowerMath.stressPerRpm(1.0F));
+        boolean assign = route != null && PowerRouteSafety.shouldAssignStress(
+            true, route.running(), route.rpm(), routeStillPresent(route));
+        DirectStressRegistry.Change change = assign
+            ? DirectStressRegistry.assign(machine, route.source(), MachinePowerMath.stressPerRpm(1.0F))
+            : DirectStressRegistry.clear(machine);
         if (!change.changed()) {
             return;
         }
@@ -193,6 +210,9 @@ public final class MachinePowerManager {
             return null;
         }
         KineticNetwork network = kinetic.getOrCreateNetwork();
+        if (network == null) {
+            return null;
+        }
         for (KineticBlockEntity source : network.sources.keySet()) {
             if (source instanceof MEGearboxBlockEntity gearbox
                 && gearbox.getMode() == MEGearboxBlockEntity.Mode.EXPORT) {
@@ -213,7 +233,10 @@ public final class MachinePowerManager {
         Set<KineticNetwork> networks = new HashSet<>();
         Set<KineticBlockEntity> representedMembers = new HashSet<>();
         if (gearbox.hasNetwork()) {
-            networks.add(gearbox.getOrCreateNetwork());
+            KineticNetwork ownNetwork = gearbox.getOrCreateNetwork();
+            if (ownNetwork != null) {
+                networks.add(ownNetwork);
+            }
         }
         collectCachedNetworks(gearbox, networks);
         for (KineticNetwork network : networks) {
@@ -232,7 +255,10 @@ public final class MachinePowerManager {
                 if (route.gearbox() != gearbox || !route.source().hasNetwork()) {
                     continue;
                 }
-                networks.add(route.source().getOrCreateNetwork());
+                KineticNetwork network = route.source().getOrCreateNetwork();
+                if (network != null) {
+                    networks.add(network);
+                }
             }
         }
     }
@@ -276,11 +302,15 @@ public final class MachinePowerManager {
         MEGearboxBlockEntity gearbox = route.gearbox();
         Level level = source.getLevel();
         if (level == null || level.isClientSide || source.isRemoved() || gearbox.isRemoved()
-            || gearbox.getLevel() != level || gearbox.getMode() != MEGearboxBlockEntity.Mode.EXPORT) {
+            || gearbox.getLevel() != level || gearbox.getMode() != MEGearboxBlockEntity.Mode.EXPORT
+            || !source.hasNetwork() || !gearbox.hasNetwork()) {
             return false;
         }
-        return level.getBlockEntity(source.getBlockPos()) == source
-            && level.getBlockEntity(gearbox.getBlockPos()) == gearbox;
+        if (level.getBlockEntity(source.getBlockPos()) != source
+            || level.getBlockEntity(gearbox.getBlockPos()) != gearbox) {
+            return false;
+        }
+        return PowerRouteSafety.sameNetwork(source.getOrCreateNetwork(), gearbox.getOrCreateNetwork());
     }
 
     public record DirectSource(
@@ -295,10 +325,15 @@ public final class MachinePowerManager {
     }
 
     private static void refreshStress(@Nullable KineticBlockEntity source) {
-        if (source == null || source.isRemoved() || source.getLevel() == null || source.getLevel().isClientSide) {
+        if (source == null || source.getLevel() == null
+            || !PowerRouteSafety.canRefreshStress(
+                true, source.isRemoved(), source.getLevel().isClientSide, source.hasNetwork())) {
             return;
         }
         KineticNetwork network = source.getOrCreateNetwork();
+        if (network == null) {
+            return;
+        }
         network.updateStressFor(source, source.calculateStressApplied());
         network.updateStress();
     }

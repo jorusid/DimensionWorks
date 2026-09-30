@@ -1,7 +1,6 @@
 package dev.szx.dimensionworks.mekstress.mixin.mek;
 
 import dev.szx.dimensionworks.mekstress.integration.jade.JadeEnergySanitizer;
-import dev.szx.dimensionworks.mekstress.memory.StressRules;
 import mekanism.common.integration.lookingat.jade.JadeDataProvider;
 import mekanism.common.tile.base.TileEntityMekanism;
 import net.minecraft.nbt.CompoundTag;
@@ -19,8 +18,8 @@ public abstract class JadeDataProviderMixin {
         remap = false
     )
     private void dimensionworks$hideFeForStressMachines(CompoundTag data, BlockAccessor accessor, CallbackInfo ci) {
-        boolean eligible = accessor.getBlockEntity() instanceof TileEntityMekanism machine
-            && StressRules.isEligible(machine);
-        JadeEnergySanitizer.removeEnergyElements(data, eligible);
+        if (accessor.getBlockEntity() instanceof TileEntityMekanism) {
+            JadeEnergySanitizer.removeEnergyElements(data);
+        }
     }
 }

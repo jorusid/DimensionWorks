@@ -22,6 +22,14 @@ public final class MachinePowerMath {
         return SU_PER_RPM * Math.min(1.0F, effectiveScale);
     }
 
+    /** Work scales with supplied RPM and caps at full speed once the target is met. */
+    public static double workRate(int actualRpm, int targetRpm) {
+        if (actualRpm <= 0 || targetRpm <= 0) {
+            return 0.0D;
+        }
+        return Math.min(1.0D, (double) actualRpm / (double) targetRpm);
+    }
+
     /**
      * Keeps an idle export gearbox rotating while preserving the documented
      * RPM x 8 load for a single standard machine.

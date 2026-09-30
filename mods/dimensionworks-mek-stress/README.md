@@ -4,9 +4,11 @@
 
 - AE 侧库存由 Memory Drive 与 Memory Card 提供。Gearbox IMPORT 把 Create 应力存入网络，Gearbox EXPORT 从网络扣除 SU 后输出应力。
 - Create 侧动力只能从 ME Gearbox EXPORT 取出。合格 Mekanism 加工机器必须位于该齿轮箱供能的 Create 网络内。
-- 合格 Mekanism 机器不再读取或换算 FE。只要连接的 EXPORT 齿轮箱正在输出，机器就持续按 `当前有效 RPM × 8` 占用网络 SU；空闲机器也占用。机器拒绝一切 FE 输入。
+- 合格 Mekanism 机器会从六个方向寻找相邻 Create 动力线路。只要任一方向接通有效 EXPORT 网络，机器就按 `当前有效 RPM × 8` 占用 SU；空闲机器也占用。机器拒绝一切 FE 输入。
+- 机器能量采用二元供能：网络能支付当前 RPM 对应的 SU 时，内部能量保持满值；SU 不足、路线停止或 Create 网络过载时，内部能量为零。RPM 低于机器目标时保留满能量，但按 `min(1, 有效 RPM / 目标 RPM)` 降低工作速度。
 
 本 Mod 不修改 Applied Create、AE2、Mekanism、Create 的源码。Applied Create 原有的应力存储 Cell、组件、外壳和创造 Cell 全部退役，不能继续挂载、读写或供应 `StressKey`。
+Mekanism 的能量立方、能量平板、感应 Cell 与感应 Provider 由 KubeJS 退役：移除配方、移出创造栏、隐藏 JEI、阻止拾取和使用，并清除玩家库存。为避免配置器、碎星者、激光器等非储能配方失去材料，残留配方中的 `mekanism:energy_tablet` 输入会替换为物品标签 `#mekanism:alloys/infused`。感应外壳与感应端口不属于储能元件，继续保留；没有 Cell 与 Provider 后无法组成可储能的感应矩阵。
 
 KubeJS 会把 `memory_drive_ddr1..5` 和 DDR1～5 × 六形态共 30 个 `memory_card_ddrN_*` 加入创造标签；`stress_output_card` 及其配方、资源、总线逻辑和 Jade 显示已全部删除。
 
@@ -30,17 +32,18 @@ KubeJS 会把 `memory_drive_ddr1..5` 和 DDR1～5 × 六形态共 30 个 `memory
 idleLoad       = effectiveRpm * 8
 fullLoad       = max(idleLoad, Create 网络完整应力负载)
 requestedSu    = ceil(fullLoad)
-stockQ         = storedSu / requestedSu
-rpmQ           = bandwidthRpm / requestedRpm，低于 0.6 时归零
+rpmQ           = min(1, bandwidthRpm / requestedRpm)
+requiredSu     = ceil(requestedSu * rpmQ)
+stockQ         = storedSu >= requiredSu ? 1 : 0
 q              = min(stockQ, rpmQ)
 outputRpm      = round(effectiveRpm * q)
-chargedSu      = min(requestedSu, 当前可用 SU)
+chargedSu      = requiredSu
 perRpmCapacity = chargedSu / outputRpm
 ```
 
 空载 EXPORT 齿轮箱的基础负载为 `有效 RPM × 8`。接入下游机器时取“基础负载”与“实际完整应力负载”的较大值，因此单台标准机器仍保持原有 `RPM × 8` 标定，多台机器会继续按总负载增长。
 
-ME Gearbox EXPORT 只有在有效 RPM、实际输出 RPM、实际扣费和 `q > 0` 全部有效时才运行；任一条件缺失都会同时清除输出速度与宣告容量。没有 SU、没有 RPM 带宽或 RPM 覆盖率低于 60% 时，全网机械动力停止；没有下游机器时，齿轮箱仍按基础负载运行。
+ME Gearbox EXPORT 只有在有效 RPM、实际输出 RPM、实际扣费和 `q > 0` 全部有效时才运行；任一条件缺失都会同时清除输出速度与宣告容量。`storedSu < requiredSu` 时整台齿轮箱无能量输出，不允许用库存比例赊速；RPM 带宽不足时则按比例输出转速。没有下游机器时，齿轮箱仍按基础负载运行。
 
 RPM 需求以每台 EXPORT 齿轮箱为一个占用单位，同一 AE 网络内求和；下游机器只放大该齿轮箱的 SU 应力需求，不重复占用 RPM。齿轮箱不需要等待下游机器出现才开始运行，因此不会形成“机器等齿轮箱、齿轮箱等负载”的死锁。
 
@@ -48,9 +51,9 @@ ME Gearbox EXPORT 向 Create 网络宣告的容量严格等于本次实际扣除
 
 ## Jade
 
-- 合格 Mekanism 加工机器的 Mekanism FE/J 元素被移除。
+- 所有 Mekanism 方块的 Mekanism FE/J 元素都被移除，不再显示内部能量。
 - 本 Mod 的 MEK Jade 条目显示当前有效 RPM、`RPM × 8` 的 SU/t 占用和当前工作倍率。
-- 非加工 MEK 设备的 Jade 能量显示保持不变。
+- 非加工 MEK 设备仍不会出现本 Mod 的机械动力条目。
 
 ## 工程接口
 
