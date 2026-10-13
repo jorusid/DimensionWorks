@@ -11,6 +11,7 @@ public final class PowerRouteSafety {
 
     public static boolean hasMechanicalPower(boolean routePresent, boolean running, float rpm,
                                             boolean networkPresent, boolean overStressed) {
-        return routePresent && running && rpm > 0.0F && networkPresent && !overStressed;
+        return routePresent && running && Float.isFinite(rpm) && rpm != 0.0F
+            && networkPresent && !overStressed;
     }
 }

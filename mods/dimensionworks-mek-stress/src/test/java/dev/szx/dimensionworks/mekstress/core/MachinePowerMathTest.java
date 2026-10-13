@@ -11,7 +11,7 @@ class MachinePowerMathTest {
         assertEquals(4_096L, MachinePowerMath.suForRpm(512.0F));
         assertEquals(32_768L, MachinePowerMath.suForRpm(4_096.0F));
         assertEquals(0L, MachinePowerMath.suForRpm(0.0F));
-        assertEquals(0L, MachinePowerMath.suForRpm(-512.0F));
+        assertEquals(4_096L, MachinePowerMath.suForRpm(-512.0F));
     }
 
     @Test
@@ -37,6 +37,7 @@ class MachinePowerMathTest {
     @Test
     void multipliesPerRpmStressByActualNetworkSpeed() {
         assertEquals(32_768.0D, MachinePowerMath.actualStress(8.0F, 4_096.0F), 1.0E-6D);
+        assertEquals(32_768.0D, MachinePowerMath.actualStress(8.0F, -4_096.0F), 1.0E-6D);
         assertEquals(0.0D, MachinePowerMath.actualStress(8.0F, 0.0F), 1.0E-6D);
     }
 

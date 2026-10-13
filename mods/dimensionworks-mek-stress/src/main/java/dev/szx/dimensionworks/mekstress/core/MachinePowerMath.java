@@ -8,10 +8,11 @@ public final class MachinePowerMath {
     }
 
     public static long suForRpm(float rpm) {
-        if (!Float.isFinite(rpm) || rpm <= 0.0F) {
+        float speed = Math.abs(rpm);
+        if (!Float.isFinite(rpm) || speed == 0.0F) {
             return 0L;
         }
-        double value = Math.ceil((double) rpm * SU_PER_RPM);
+        double value = Math.ceil((double) speed * SU_PER_RPM);
         return value >= Long.MAX_VALUE ? Long.MAX_VALUE : (long) value;
     }
 
@@ -33,10 +34,11 @@ public final class MachinePowerMath {
 
     /** Converts a per-RPM stress coefficient into Create's speed-scaled load. */
     public static double actualStress(float stressPerRpm, float rpm) {
-        if (!Float.isFinite(stressPerRpm) || stressPerRpm <= 0.0F || !Float.isFinite(rpm) || rpm <= 0.0F) {
+        float speed = Math.abs(rpm);
+        if (!Float.isFinite(stressPerRpm) || stressPerRpm <= 0.0F || !Float.isFinite(rpm) || speed == 0.0F) {
             return 0.0D;
         }
-        return (double) stressPerRpm * (double) Math.abs(rpm);
+        return (double) stressPerRpm * (double) speed;
     }
 
     /** Work scales with supplied RPM and caps at full speed once the target is met. */
