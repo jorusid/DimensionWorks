@@ -24,10 +24,11 @@ public final class MachinePowerMath {
 
     /** Keeps the propagated speed a direct MEK route consumes before its own tier checks. */
     public static float directRpm(float requestedRpm, int maximumRpm) {
-        if (!Float.isFinite(requestedRpm) || requestedRpm <= 0.0F || maximumRpm <= 0) {
+        float speed = Math.abs(requestedRpm);
+        if (!Float.isFinite(requestedRpm) || speed == 0.0F || maximumRpm <= 0) {
             return 0.0F;
         }
-        return Math.min(Math.abs(requestedRpm), (float) maximumRpm);
+        return Math.min(speed, (float) maximumRpm);
     }
 
     /** Converts a per-RPM stress coefficient into Create's speed-scaled load. */

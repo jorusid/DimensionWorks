@@ -68,7 +68,8 @@ class MachinePowerMathTest {
     void keepsDirectNetworkRpmForMekTierScalingWithinTheConfiguredMaximum() {
         assertEquals(4_096.0F, MachinePowerMath.directRpm(4_096.0F, 10_240), 1.0E-6F);
         assertEquals(10_240.0F, MachinePowerMath.directRpm(20_480.0F, 10_240), 1.0E-6F);
-        assertEquals(0.0F, MachinePowerMath.directRpm(-4_096.0F, 10_240), 1.0E-6F);
+        assertEquals(4_096.0F, MachinePowerMath.directRpm(-4_096.0F, 10_240), 1.0E-6F);
+        assertEquals(10_240.0F, MachinePowerMath.directRpm(-20_480.0F, 10_240), 1.0E-6F);
         assertEquals(0.0F, MachinePowerMath.directRpm(Float.NaN, 10_240), 1.0E-6F);
         assertEquals(0.0F, MachinePowerMath.directRpm(4_096.0F, 0), 1.0E-6F);
     }
