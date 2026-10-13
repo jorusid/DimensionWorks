@@ -40,6 +40,8 @@ run/
 out/
 
 # Local secrets
+.worktrees/
+
 .hmcl/
 .env
 *.local
