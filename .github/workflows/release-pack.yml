@@ -50,7 +50,6 @@ jobs:
             --instance-dir "$CI_INSTANCE_DIR" \
             --cache-dir "$PACK_CACHE_DIR" \
             --output "dist/DimensionWorks-Server-${version}.zip"
-          version="$(tr -d '\r\n' < VERSION)"
           echo "PACK_VERSION=${version}" >> "$GITHUB_ENV"
 
       - name: Package client
