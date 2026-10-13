@@ -2,10 +2,10 @@ package dev.szx.dimensionworks.mekstress.core;
 
 /** Mekanism quality tiers covered by the AE mechanical power bridge. */
 public enum MachineTier {
-    BASIC(512, 4_096L, 512L, 0),
-    ADVANCED(1_024, 8_192L, 1_024L, 1),
-    ELITE(2_048, 16_384L, 2_048L, 2),
-    ULTIMATE(4_096, 32_768L, 4_096L, 3);
+    BASIC(1_024, 8_192L, 1_024L, 0),
+    ADVANCED(2_048, 16_384L, 2_048L, 1),
+    ELITE(4_096, 32_768L, 4_096L, 2),
+    ULTIMATE(8_192, 65_536L, 8_192L, 3);
 
     private final int targetRpm;
     private final long suPerTick;

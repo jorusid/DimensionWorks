@@ -1,0 +1,7 @@
+{
+  "embeddium.search_bar_empty": "搜索选项...",
+  "embeddium.options.added_by_mod_string": "由模式添加: %s",
+  "embeddium.options.fullscreen.resolution.tooltip": "全屏模式控制游戏的分辨率。",
+  "embeddium.options.use_quad_normals_for_lighting.name": "使用 准确 夸四形状",
+  "embeddium.options.use_quad_normals_for_lighting.tooltip": "当 已启用 时, 内存将根据其真实方向而不是轴对齐方向对非原版 方块面部应用阴影。 如果福治试验光管是 已禁用 (建议最佳性能) , 这可以提高光照质量 。 若实验光线管为 已启用, 它将无效 ."
+}

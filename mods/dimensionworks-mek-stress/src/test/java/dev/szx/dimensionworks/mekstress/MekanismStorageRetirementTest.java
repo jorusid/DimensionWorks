@@ -1,6 +1,7 @@
 package dev.szx.dimensionworks.mekstress;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -37,9 +38,11 @@ class MekanismStorageRetirementTest {
             assertTrue(server.contains("'" + id + "'"), "server script must retire " + id);
             assertTrue(client.contains("'" + id + "'"), "client script must hide " + id);
         }
-        assertTrue(startup.contains("StartupEvents.modifyCreativeTab('mekanism:main'"));
+        assertTrue(startup.contains("StartupEvents.modifyCreativeTab('mekanism:mekanism'"));
         assertTrue(server.contains("event.remove({ output: id })"));
         assertTrue(client.contains("retiredMekanismStorageItems.forEach(id => event.hide(id))"));
         assertTrue(server.contains("event.replaceInput({}, 'mekanism:energy_tablet', retiredMekanismRecipeMaterialReplacement)"));
+        assertFalse(server.contains("tierDefinition"), "redeclaring a const inside the recipe loop aborts retirement");
+        assertTrue(server.contains("memoryTiers[tier - 1].alloy"));
     }
 }

@@ -29,10 +29,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import check_localization  # noqa: E402  (sibling localization coverage check)
 import pack_version  # noqa: E402  (sibling release version rules)
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "manifest" / "mods.json"
+SHADER_MANIFEST = ROOT / "manifest" / "shaderpacks.json"
 DEFAULT_INSTANCE_DIR = (
     Path.home() / "Library" / "Application Support" / "minecraft" / "versions" / "DimensionWorks"
 )
@@ -43,6 +45,7 @@ KUBEJS_JSON_ROOTS = ("kubejs/data", "kubejs/assets")
 SELF_PROPAGATION_CHECK = ROOT / "scripts" / "check_cave_self_propagation.js"
 QUEST_CHAPTER_DIR = ROOT / "config" / "ftbquests" / "quests" / "chapters"
 RECIPE_SOURCE_DIRS = ("kubejs/server_scripts", "kubejs/startup_scripts", "kubejs/client_scripts")
+LOCALIZATION_OVERRIDE_ROOT = ROOT / "mods" / "dimensionworks-localization"
 
 
 @dataclass
@@ -94,9 +97,83 @@ def check_manifest() -> CheckResult:
     return CheckResult("manifest", not problems, f"{len(manifest.get('mods', []))} mods", problems)
 
 
+def check_localization_overlay(instance_dir: Path) -> CheckResult:
+    report = check_localization.build_report(instance_dir, LOCALIZATION_OVERRIDE_ROOT)
+    detail = (
+        f"{report.namespace_count} namespaces, "
+        f"{report.language_key_count} language keys, "
+        f"{report.manual_page_count} manual pages"
+    )
+    log = [] if report.ok else check_localization.format_failure(report).splitlines()
+    return CheckResult("localization", report.ok, detail, log)
+
+
 def check_instance(instance_dir: Path) -> CheckResult:
     missing = [str(path) for path in (instance_dir / "config",) if not path.is_dir()]
     return CheckResult("instance-config", not missing, str(instance_dir), missing)
+
+
+def check_shaderpack_manifest() -> CheckResult:
+    try:
+        manifest = json.loads(SHADER_MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        return CheckResult("shaderpack-manifest", False, "invalid manifest", [str(error)])
+
+    problems: list[str] = []
+    if manifest.get("schema_version") != 1:
+        problems.append(f"unsupported schema_version {manifest.get('schema_version')!r}")
+    shaderpacks = manifest.get("shaderpacks")
+    if not isinstance(shaderpacks, list) or not shaderpacks:
+        return CheckResult(
+            "shaderpack-manifest", False, "no shaderpacks", problems + ["shaderpacks must be a non-empty list"]
+        )
+
+    required_fields = {
+        "modrinth": ("project_id", "version_id", "filename"),
+        "curseforge": ("project_id", "file_id", "file_name"),
+    }
+    filenames: set[str] = set()
+    for shaderpack in shaderpacks:
+        identity = shaderpack.get("id", "<missing id>")
+        source = shaderpack.get("source")
+        if source not in required_fields:
+            problems.append(f"{identity}: unsupported source {source!r}")
+            continue
+        for field_name in (
+            *required_fields[source],
+            "name",
+            "homepage",
+            "sha1",
+            "sha512",
+            "size",
+        ):
+            value = shaderpack.get(field_name)
+            if value is None or value == "":
+                problems.append(f"{identity}: missing {field_name}")
+            elif isinstance(value, str) and "pending" in value.lower():
+                problems.append(f"{identity}: {field_name}={value} is not a fixed version")
+
+        filename = shaderpack.get("filename") or shaderpack.get("file_name")
+        if filename:
+            if filename in filenames:
+                problems.append(f"{identity}: duplicate shaderpack filename {filename!r}")
+            filenames.add(filename)
+
+        sha1 = shaderpack.get("sha1", "")
+        sha512 = shaderpack.get("sha512", "")
+        if not isinstance(sha1, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", sha1):
+            problems.append(f"{identity}: sha1 must be a 40-character hex digest")
+        if not isinstance(sha512, str) or not re.fullmatch(r"[0-9a-fA-F]{128}", sha512):
+            problems.append(f"{identity}: sha512 must be a 128-character hex digest")
+        size = shaderpack.get("size")
+        if not isinstance(size, int) or size <= 0:
+            problems.append(f"{identity}: size must be a positive integer")
+        if source == "curseforge" and not isinstance(shaderpack.get("file_id"), int):
+            problems.append(f"{identity}: file_id must be an integer")
+
+    return CheckResult(
+        "shaderpack-manifest", not problems, f"{len(shaderpacks)} shaderpacks", problems
+    )
 
 
 def check_pack_version(
@@ -121,7 +198,7 @@ def check_pack_version(
 
 def check_json() -> CheckResult:
     problems: list[str] = []
-    files = [MANIFEST]
+    files = [MANIFEST, SHADER_MANIFEST]
     for relative in KUBEJS_JSON_ROOTS:
         files.extend(sorted((ROOT / relative).rglob("*.json")))
     quest_root = ROOT / "config" / "ftbquests"
@@ -301,12 +378,14 @@ def run_all(
     started = time.monotonic()
     checks = [
         check_manifest,
+        check_shaderpack_manifest,
         lambda: check_pack_version(
             requested_version,
             dimension_complete=dimension_complete,
             major_bump=major_bump,
         ),
         lambda: check_instance(instance_dir),
+        lambda: check_localization_overlay(instance_dir),
         check_json,
         check_kubejs_syntax,
         check_self_propagation,

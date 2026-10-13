@@ -99,7 +99,7 @@ public final class MemoryJadePlugin implements IWailaPlugin {
             int rpm = MachinePowerManager.currentRpm(route);
             data.putInt("effectiveRpm", rpm);
             data.putLong("suPerTick", MachinePowerManager.suPerTick(route));
-            data.putDouble("production", MachinePowerManager.workRate(machine, route));
+            data.putDouble("production", MachinePowerManager.throughputMultiplier(machine, route));
             data.putString("status", rpm > 0 ? "OK" : "NO_POWER");
         }
 

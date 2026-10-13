@@ -465,6 +465,16 @@
       "url": "https://modrinth.com/mod/customskinloader"
     },
     {
+      "id": "dimensionworks_localization",
+      "name": "DimensionWorks 简体中文汉化",
+      "source": "in-repo",
+      "project_path": "mods/dimensionworks-localization",
+      "version": "0.1.0",
+      "required": true,
+      "environment": "client",
+      "url": "https://github.com/szx-jn/DimensionWorks/tree/main/mods/dimensionworks-localization"
+    },
+    {
       "id": "dimensionworks_rpm_limit",
       "name": "DimensionWorks RPM Limit",
       "source": "in-repo",
@@ -479,7 +489,7 @@
       "name": "DimensionWorks ME Mechanical Power",
       "source": "in-repo",
       "project_path": "mods/dimensionworks-mek-stress",
-      "version": "0.3.1",
+      "version": "0.3.4",
       "required": true,
       "environment": "both",
       "url": "https://github.com/szx-jn/DimensionWorks/tree/main/mods/dimensionworks-mek-stress"

@@ -28,6 +28,20 @@ class JadeEnergySanitizerTest {
         assertEquals(1, data.getList("mekData", CompoundTag.TAG_COMPOUND).size());
     }
 
+    @Test
+    void removesEnergyEntryRegardlessOfStoredValueType() {
+        CompoundTag energy = new CompoundTag();
+        energy.putInt("energy", 100);
+        energy.putInt("max", 1000);
+        ListTag list = new ListTag();
+        list.add(energy);
+        CompoundTag data = new CompoundTag();
+        data.put("mekData", list);
+
+        assertTrue(JadeEnergySanitizer.removeEnergyElements(data));
+        assertFalse(data.contains("mekData"));
+    }
+
     private static CompoundTag dataWithTextAndEnergy() {
         CompoundTag text = new CompoundTag();
         text.putString("text", "{\"text\":\"Machine\"}");

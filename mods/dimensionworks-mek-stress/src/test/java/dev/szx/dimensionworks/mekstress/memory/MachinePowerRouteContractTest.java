@@ -1,5 +1,6 @@
 package dev.szx.dimensionworks.mekstress.memory;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -9,17 +10,72 @@ import org.junit.jupiter.api.Test;
 
 class MachinePowerRouteContractTest {
     @Test
-    void staleRoutesCannotRefreshANullKineticNetwork() throws IOException {
+    void adjacentKineticMemberJoinsItsExistingNetworkWithoutAnExportGearbox() throws IOException {
         String source = Files.readString(Path.of(
             "src/main/java/dev/szx/dimensionworks/mekstress/memory/MachinePowerManager.java"));
 
-        assertTrue(source.contains("PowerRouteSafety.shouldAssignStress("));
-        assertTrue(source.contains("for (Direction direction : Direction.values())"));
-        assertTrue(source.contains("PowerRouteSafety.sameNetwork("));
-        assertTrue(source.contains("!source.hasNetwork() || !gearbox.hasNetwork()"));
-        assertTrue(source.contains("KineticNetwork network = source.getOrCreateNetwork();"));
-        assertTrue(source.contains("if (network == null)"));
+        assertTrue(source.contains("MachineFootprint.kineticCandidates("));
+        assertTrue(source.contains("AttributeHasBounding"));
+        assertTrue(source.contains("bounding.getPositions("));
         assertTrue(source.contains("KineticNetwork network = kinetic.getOrCreateNetwork();"));
-        assertTrue(source.contains("if (ownNetwork != null)"));
+        assertTrue(source.contains("if (network == null)"));
+        assertTrue(source.contains("new DirectSource(kinetic, network,"));
+        assertTrue(source.contains("PowerRouteSafety.shouldAssignStress("));
+        assertTrue(source.contains("MachineKineticRegistry.sync(tile, route.network(), memberRpm(route));"));
+        assertTrue(source.contains("MachineKineticRegistry.detach(tile);"));
+        assertFalse(source.contains("findExportGearbox"));
+    }
+
+    @Test
+    void routesOnlyThroughShaftsThatFaceTheMachine() throws IOException {
+        String source = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/mekstress/memory/MachinePowerManager.java"));
+
+        assertTrue(source.contains("hasShaftTowards("));
+        assertTrue(source.contains("getOpposite()"));
+    }
+
+    @Test
+    void directRoutesRespectPlayerRpmLimitBeforeMekTierScaling() throws IOException {
+        String source = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/mekstress/memory/MachinePowerManager.java"));
+
+        assertTrue(source.contains("RpmLimitManager.clamp(kinetic, kinetic.getTheoreticalSpeed())"));
+        assertTrue(source.contains("MachinePowerMath.directRpm(limitedRpm"));
+        assertTrue(source.contains("RpmLimitManager.clamp(gearbox, configuredRpm)"));
+    }
+
+    @Test
+    void jadeReportsTheCombinedThroughputMultiplier() throws IOException {
+        String jade = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/mekstress/integration/jade/MemoryJadePlugin.java"));
+
+        assertTrue(jade.contains("MachinePowerManager.throughputMultiplier(machine, route)"));
+    }
+
+    @Test
+    void virtualMemberParticipatesInCreateNetworkStress() throws IOException {
+        String registry = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/mekstress/memory/MachineKineticRegistry.java"));
+        String member = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/mekstress/memory/MachineKineticMember.java"));
+        String networkMixin = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/mekstress/mixin/create/KineticNetworkMixin.java"));
+
+        assertTrue(registry.contains("network.members.put("));
+        assertTrue(registry.contains("network.updateNetwork()"));
+        assertTrue(registry.contains("boolean wasAttached = network.members.containsKey(member);"));
+        assertTrue(registry.contains("if (previous != network || !wasAttached)"));
+        assertTrue(member.contains("extends KineticBlockEntity"));
+        assertTrue(member.contains("IVirtualKineticMember"));
+        assertTrue(member.contains("calculateStressApplied()"));
+        assertTrue(networkMixin.contains("IVirtualKineticMember"));
+        assertTrue(networkMixin.contains("calculateStress"));
+    }
+
+    @Test
+    void obsoleteSyntheticSourceStressIsRemoved() {
+        assertFalse(Files.exists(Path.of(
+            "src/main/java/dev/szx/dimensionworks/mekstress/memory/DirectStressRegistry.java")));
     }
 }

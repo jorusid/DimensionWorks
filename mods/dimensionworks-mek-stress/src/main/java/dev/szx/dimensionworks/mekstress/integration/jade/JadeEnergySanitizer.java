@@ -1,5 +1,6 @@
 package dev.szx.dimensionworks.mekstress.integration.jade;
 
+import mekanism.api.NBTConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -17,7 +18,7 @@ public final class JadeEnergySanitizer {
         boolean removed = false;
         for (int index = entries.size() - 1; index >= 0; index--) {
             CompoundTag entry = entries.getCompound(index);
-            if (entry.contains("energy", Tag.TAG_STRING)) {
+            if (entry.contains(NBTConstants.ENERGY_STORED)) {
                 entries.remove(index);
                 removed = true;
             }

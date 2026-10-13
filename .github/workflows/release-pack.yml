@@ -1,0 +1,116 @@
+name: Release DimensionWorks
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dimensionworks-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Package client and server
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CI_INSTANCE_DIR: ${{ runner.temp }}/dimensionworks-instance
+      PACK_CACHE_DIR: ${{ runner.temp }}/dimensionworks-pack-cache
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+
+      - name: Prepare client validation instance
+        run: |
+          python3 scripts/prepare_ci_instance.py \
+            --instance-dir "$CI_INSTANCE_DIR" \
+            --cache-dir "$PACK_CACHE_DIR"
+
+      - name: Build and package server
+        run: |
+          set -euo pipefail
+          version="$(python3 -c 'import sys; sys.path.insert(0, "scripts"); import pack_version; print(pack_version.read_current_version().next_patch())')"
+          python3 scripts/package_server.py \
+            --version "$version" \
+            --instance-dir "$CI_INSTANCE_DIR" \
+            --cache-dir "$PACK_CACHE_DIR" \
+            --output "dist/DimensionWorks-Server-${version}.zip"
+          version="$(tr -d '\r\n' < VERSION)"
+          echo "PACK_VERSION=${version}" >> "$GITHUB_ENV"
+
+      - name: Package client
+        run: |
+          set -euo pipefail
+          python3 scripts/package_mrpack.py \
+            --version "$PACK_VERSION" \
+            --instance-dir "$CI_INSTANCE_DIR" \
+            --cache-dir "$PACK_CACHE_DIR" \
+            --output "dist/DimensionWorks-${PACK_VERSION}.mrpack" \
+            --skip-build
+
+      - name: Verify release archives
+        run: |
+          set -euo pipefail
+          unzip -t "dist/DimensionWorks-${PACK_VERSION}.mrpack"
+          unzip -t "dist/DimensionWorks-Server-${PACK_VERSION}.zip"
+          unzip -p "dist/DimensionWorks-${PACK_VERSION}.mrpack" modrinth.index.json | jq -e . >/dev/null
+          unzip -l "dist/DimensionWorks-Server-${PACK_VERSION}.zip" | grep -q 'start.sh'
+          (
+            cd dist
+            shasum -a 256 \
+              "DimensionWorks-${PACK_VERSION}.mrpack" \
+              "DimensionWorks-Server-${PACK_VERSION}.zip" \
+              > SHA256SUMS
+          )
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dimensionworks-${{ env.PACK_VERSION }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/DimensionWorks-${{ env.PACK_VERSION }}.mrpack
+            dist/DimensionWorks-Server-${{ env.PACK_VERSION }}.zip
+            dist/SHA256SUMS
+
+      - name: Publish latest GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${PACK_VERSION}"
+          title="DimensionWorks ${PACK_VERSION}"
+          notes="Minecraft 1.20.1 Forge 客户端与服务端发行包。"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" \
+              "dist/DimensionWorks-${PACK_VERSION}.mrpack" \
+              "dist/DimensionWorks-Server-${PACK_VERSION}.zip" \
+              dist/SHA256SUMS \
+              --clobber
+            gh release edit "$tag" --latest --title "$title" --notes "$notes"
+          else
+            gh release create "$tag" \
+              --target "$GITHUB_SHA" \
+              --latest \
+              --title "$title" \
+              --notes "$notes" \
+              "dist/DimensionWorks-${PACK_VERSION}.mrpack" \
+              "dist/DimensionWorks-Server-${PACK_VERSION}.zip" \
+              dist/SHA256SUMS
+          fi

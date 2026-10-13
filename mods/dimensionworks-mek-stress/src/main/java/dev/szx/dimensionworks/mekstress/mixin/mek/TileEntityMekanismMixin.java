@@ -1,6 +1,7 @@
 package dev.szx.dimensionworks.mekstress.mixin.mek;
 
 import dev.szx.dimensionworks.mekstress.core.WorkScheduler;
+import dev.szx.dimensionworks.mekstress.core.MachineWorkContext;
 import dev.szx.dimensionworks.mekstress.memory.MachinePowerManager;
 import dev.szx.dimensionworks.mekstress.memory.StressRules;
 import mekanism.common.tile.base.TileEntityMekanism;
@@ -9,6 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = TileEntityMekanism.class, remap = false)
@@ -33,6 +35,7 @@ public abstract class TileEntityMekanismMixin {
         long tick = level.getGameTime();
         MachinePowerManager.DirectSource route = MachinePowerManager.powerRoute(self);
         MachinePowerManager.updateDirectStress(self, route);
+        MachinePowerManager.updateMechanicalEnergy(self, route);
 
         double workRate = MachinePowerManager.workRate(self, route);
         int calls = WorkScheduler.callsForRate(workRate, tick);
@@ -53,6 +56,27 @@ public abstract class TileEntityMekanismMixin {
             }
         } finally {
             dimensionworks$repeatingUpdate = false;
+        }
+    }
+
+    @Redirect(
+        method = "tickServer",
+        at = @At(
+            value = "INVOKE",
+            target = "Lmekanism/common/tile/base/TileEntityMekanism;onUpdateServer()V"
+        ),
+        remap = false
+    )
+    private static void dimensionworks$wrapUpdateWithProductionContext(TileEntityMekanism tile) {
+        TileEntityMekanismInvoker invoker = (TileEntityMekanismInvoker) tile;
+        if (!StressRules.isEligible(tile)) {
+            invoker.dimensionworks$onUpdateServer();
+            return;
+        }
+
+        try (MachineWorkContext.Scope ignored = MachineWorkContext.push(
+            MachinePowerManager.productionMultiplier(tile))) {
+            invoker.dimensionworks$onUpdateServer();
         }
     }
     @Inject(method = "blockRemoved", at = @At("HEAD"), remap = false)

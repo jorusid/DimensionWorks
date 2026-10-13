@@ -29,6 +29,9 @@ dist/
 __pycache__/
 *.py[cod]
 
+# Downloaded shader archives; sources are pinned in manifest/shaderpacks.json
+shaderpacks/*.zip
+
 # Gradle
 .gradle/
 build/

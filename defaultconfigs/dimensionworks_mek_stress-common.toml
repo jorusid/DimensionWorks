@@ -47,13 +47,13 @@
 
 [mekanism_machine_rpm]
 	#Basic Mekanism machine target RPM.
-	basicRpm = 512
+    basicRpm = 1024
 	#Advanced Mekanism machine target RPM.
-	advancedRpm = 1024
+    advancedRpm = 2048
 	#Elite Mekanism machine target RPM.
-	eliteRpm = 2048
+    eliteRpm = 4096
 	#Ultimate Mekanism machine target RPM.
-	ultimateRpm = 4096
+    ultimateRpm = 8192
 
 [tuning]
 	#Exponent for network efficiency and AE production scaling.

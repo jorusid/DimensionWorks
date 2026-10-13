@@ -109,15 +109,14 @@ ServerEvents.recipes(event => {
   })
 
   for (let tier = 2; tier <= 5; tier++) {
-    const tierDefinition = memoryTiers[tier - 1]
     event.shaped(`dimensionworks_mek_stress:memory_drive_ddr${tier}`, [
       'PAP',
       'ADA',
       'PAP'
     ], {
       P: `dimensionworks_mek_stress:memory_drive_ddr${tier - 1}`,
-      A: tierDefinition.alloy,
-      D: tierDefinition.plate
+      A: memoryTiers[tier - 1].alloy,
+      D: memoryTiers[tier - 1].plate
     })
   }
 

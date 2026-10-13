@@ -69,6 +69,6 @@ StartupEvents.modifyCreativeTab('appliedcreate:main', event => {
   dwMemoryItems.forEach(id => event.add(id))
 })
 
-StartupEvents.modifyCreativeTab('mekanism:main', event => {
+StartupEvents.modifyCreativeTab('mekanism:mekanism', event => {
   dwRetiredMekanismStorageItems.forEach(id => event.remove(id))
 })

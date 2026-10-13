@@ -10,7 +10,6 @@ import mekanism.common.tile.base.TileEntityMekanism;
 /** Structural eligibility and tier rules for the Mekanism bridge. */
 public final class StressRules {
     private static final Set<String> EXCLUDED_CLASSES = Set.of(
-        "mekanism.common.tile.TileEntityChargepad",
         "mekanism.common.tile.TileEntityEnergyCube",
         "mekanism.common.tile.TileEntityQuantumEntangloporter",
         "mekanism.common.tile.TileEntityCardboardBox",
@@ -29,14 +28,16 @@ public final class StressRules {
         if (tile == null || !tile.canHandleEnergy()) {
             return false;
         }
-        String className = tile.getClass().getName();
-        if (EXCLUDED_CLASSES.contains(className)
+        return isEligibleClass(tile.getClass().getName());
+    }
+
+    public static boolean isEligibleClass(String className) {
+        if (className == null || EXCLUDED_CLASSES.contains(className)
             || className.startsWith("mekanismgenerators.")
             || className.startsWith("mekanism.common.tile.multiblock.")
             || className.contains("transmitter")
             || className.contains("EnergyCube")
-            || className.contains("QuantumEntangloporter")
-            || className.contains("Chargepad")) {
+            || className.contains("QuantumEntangloporter")) {
             return false;
         }
         return className.startsWith("mekanism.common.tile.");

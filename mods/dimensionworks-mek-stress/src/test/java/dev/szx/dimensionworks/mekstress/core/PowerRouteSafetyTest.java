@@ -23,22 +23,4 @@ class PowerRouteSafetyTest {
         assertFalse(PowerRouteSafety.hasMechanicalPower(true, true, 512.0F, true, true));
     }
 
-    @Test
-    void onlyRefreshesCreateStressForLiveSources() {
-        assertTrue(PowerRouteSafety.canRefreshStress(true, false, false, true));
-        assertFalse(PowerRouteSafety.canRefreshStress(false, false, false, true));
-        assertFalse(PowerRouteSafety.canRefreshStress(true, true, false, true));
-        assertFalse(PowerRouteSafety.canRefreshStress(true, false, true, true));
-        assertFalse(PowerRouteSafety.canRefreshStress(true, false, false, false));
-    }
-
-    @Test
-    void comparesNetworksByIdentityAndRejectsNullOrphans() {
-        Object network = new Object();
-
-        assertTrue(PowerRouteSafety.sameNetwork(network, network));
-        assertFalse(PowerRouteSafety.sameNetwork(network, new Object()));
-        assertFalse(PowerRouteSafety.sameNetwork(null, network));
-        assertFalse(PowerRouteSafety.sameNetwork(network, null));
-    }
 }

@@ -1,0 +1,7 @@
+{
+  "iris.load.failure.shader": "阴影软件包装入失败! 请向阴影开发者报告错误 。",
+  "iris.load.failure.generic": "Oculus 遇到一个试图加载阴影的问题; 请向 Oculs 开发者报告 。",
+  "iris.keybind.wireframe": "线性框架(仅SP)",
+  "options.iris.colorSpace": "色彩空间",
+  "options.iris.colorSpace.sodium_tooltip": "将屏幕转换为 。 在阴影包顶部工作, 如果不确定, 请使用 SRGB 的颜色空间。"
+}

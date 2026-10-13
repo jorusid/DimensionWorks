@@ -3,11 +3,13 @@
 把 Create 机械动力、Mekanism 机器和 AE2 内存网络连接成两条明确边界：
 
 - AE 侧库存由 Memory Drive 与 Memory Card 提供。Gearbox IMPORT 把 Create 应力存入网络，Gearbox EXPORT 从网络扣除 SU 后输出应力。
-- Create 侧动力只能从 ME Gearbox EXPORT 取出。合格 Mekanism 加工机器必须位于该齿轮箱供能的 Create 网络内。
-- 合格 Mekanism 机器会从六个方向寻找相邻 Create 动力线路。只要任一方向接通有效 EXPORT 网络，机器就按 `当前有效 RPM × 8` 占用 SU；空闲机器也占用。机器拒绝一切 FE 输入。
-- 机器能量采用二元供能：网络能支付当前 RPM 对应的 SU 时，内部能量保持满值；SU 不足、路线停止或 Create 网络过载时，内部能量为零。RPM 低于机器目标时保留满能量，但按 `min(1, 有效 RPM / 目标 RPM)` 降低工作速度。
+- Create 侧动力可由相邻动力网络中的任意有效动力源提供；ME Gearbox EXPORT 是其中一种源，普通传动杆、齿轮组和其他有源 Create 网络也能直接接入。
+- 机器能量采用二元供能：网络能支付当前 RPM 对应的 SU 且 Create 网络未过载时，内部能量契约保持满值；SU 不足、路线停止或 Create 网络过载时为零。兼容层还会每 tick 向真实 `MachineEnergyContainer` 补充最多 `20,000,000 J`（20,000 kJ），无有效动力时清零。充能器也属于合格机器，按基础档 `1024 RPM` 接入。RPM 低于机器目标时保留满能量，但按 `min(1, 有效 RPM / 目标 RPM)` 降低工作速度。RPM 高于目标时，生产倍率按 `有效 RPM / 目标 RPM` 提升，并在 Mekanism 输出边界统一作用于物品、气体、流体、复合输出和随机副产物；每个逻辑产物先按该 tick 的实际操作次数求和，再乘倍率并向下取整，避免概率副产物被重复放大。
+- 合格 Mekanism 机器会检查主机与全部 Mekanism 包围方块的外表面；任意相邻 `KineticBlockEntity` 只要其轴朝向其中一面就可以接通。机器作为虚拟成员加入实际的 `KineticNetwork.members`，因此它按 Create 已传播的网络 RPM 计算 `RPM × 8` 应力并直接计入网络总量与过载判定，不再只是显示值；空闲机器也保留零速虚拟成员。机器拒绝一切 FE 输入。
+- MEK 直接动力与 ME Gearbox EXPORT 在读取 Create 已传播的网络转速后，先经过玩家的有效 RPM 上限，再受 `directMaxRpm` 收口。原始理论转速只用于 Create 网络传播；MEK 消费、Jade 显示与虚拟成员负载都使用收口后的有效转速。因此玩家上限降低后，MEK 不会再继续按旧的高速运行。
+- 四档目标 RPM 分别为基础 `1024`、高级 `2048`、精英 `4096`、终极 `8192`。每台机器向所在 Create 网络施加 `当前 RPM × 8` 的应力需求；网络应力不足时由 Create 规则判定过载。
 
-本 Mod 不修改 Applied Create、AE2、Mekanism、Create 的源码。Applied Create 原有的应力存储 Cell、组件、外壳和创造 Cell 全部退役，不能继续挂载、读写或供应 `StressKey`。
+本 Mod 不分发或替换 Applied Create、AE2、Mekanism、Create 的源码；兼容通过自研 Mod 与运行时 Mixin 完成。Applied Create 原有的应力存储 Cell、组件、外壳和创造 Cell 全部退役，不能继续挂载、读写或供应 `StressKey`。
 Mekanism 的能量立方、能量平板、感应 Cell 与感应 Provider 由 KubeJS 退役：移除配方、移出创造栏、隐藏 JEI、阻止拾取和使用，并清除玩家库存。为避免配置器、碎星者、激光器等非储能配方失去材料，残留配方中的 `mekanism:energy_tablet` 输入会替换为物品标签 `#mekanism:alloys/infused`。感应外壳与感应端口不属于储能元件，继续保留；没有 Cell 与 Provider 后无法组成可储能的感应矩阵。
 
 KubeJS 会把 `memory_drive_ddr1..5` 和 DDR1～5 × 六形态共 30 个 `memory_card_ddrN_*` 加入创造标签；`stress_output_card` 及其配方、资源、总线逻辑和 Jade 显示已全部删除。
@@ -51,8 +53,9 @@ ME Gearbox EXPORT 向 Create 网络宣告的容量严格等于本次实际扣除
 
 ## Jade
 
-- 所有 Mekanism 方块的 Mekanism FE/J 元素都被移除，不再显示内部能量。
+- 所有 Mekanism 方块的 Mekanism FE/J 元素，以及 Jade 通用 FE/J provider 对 Mekanism 方块的显示，都被移除。
 - 本 Mod 的 MEK Jade 条目显示当前有效 RPM、`RPM × 8` 的 SU/t 占用和当前工作倍率。
+- MEK Jade 的“生产倍率”显示端到端吞吐倍率：低于目标时小于 `1x`，达到目标为 `1x`，高于目标时按比例大于 `1x`；配方内部仍不会在低转速时重复放大产出，避免二次取产。
 - 非加工 MEK 设备仍不会出现本 Mod 的机械动力条目。
 
 ## 工程接口

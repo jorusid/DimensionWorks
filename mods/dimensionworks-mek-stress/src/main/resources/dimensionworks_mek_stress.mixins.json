@@ -9,14 +9,18 @@
     "minecraft.InventoryMenuMemoryCardMixin",
     "appliedcreate.MEGearboxBlockEntityMixin",
     "appliedcreate.StorageCellsMixin",
-    "create.KineticBlockEntityMixin",
+    "create.KineticNetworkMixin",
     "mek.MachineEnergyContainerMixin",
+    "mek.OutputHelperMixin",
     "mek.JadeDataProviderMixin",
+    "mek.JadeUniversalEnergyProviderMixin",
     "mek.MachineEnergyContainerAccessor",
     "mek.TileEntityMekanismInvoker",
     "mek.TileEntityMekanismMixin"
   ],
-  "client": [],
+  "client": [
+    "mek.JadeUniversalEnergyProviderClientMixin"
+  ],
   "server": [],
   "injectors": {
     "defaultRequire": 1

@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import mekanism.common.tile.base.TileEntityMekanism;
 import org.junit.jupiter.api.Test;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 class TileEntityMekanismMixinTest {
     @Test
@@ -25,5 +27,21 @@ class TileEntityMekanismMixinTest {
                 );
             }
         }
+    }
+
+    @Test
+    void wrapsTheFullServerUpdateCallWithTheProductionContext() {
+        boolean found = false;
+        for (Method handler : TileEntityMekanismMixin.class.getDeclaredMethods()) {
+            Redirect redirect = handler.getAnnotation(Redirect.class);
+            if (redirect == null) {
+                continue;
+            }
+            if (redirect.method().length == 1 && "tickServer".equals(redirect.method()[0])) {
+                found = true;
+                assertTrue(Modifier.isStatic(handler.getModifiers()));
+            }
+        }
+        assertTrue(found, "tickServer must be wrapped at the onUpdateServer call site");
     }
 }

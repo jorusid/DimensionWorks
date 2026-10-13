@@ -62,17 +62,17 @@ class MemoryNetworkMatrixTest {
 
     @Test
     void fullDdr5HasTheDesignedTerminalMargin() {
-        Mix terminal = new Mix(10, 100, 0, 0);
-        assertEquals(245_760L, terminal.demandRpm());
-        assertEquals(1_966_080L, terminal.demandSu());
+        Mix terminal = new Mix(31, 0, 0, 0);
+        assertEquals(253_952L, terminal.demandRpm());
+        assertEquals(2_031_616L, terminal.demandSu());
         assertEquals(1.0D, NetworkMath.bandwidthQ(MemoryTier.DDR5.totalBandwidthRpm(), terminal.demandRpm()),
             1.0E-9D);
         assertEquals(1.0D, NetworkMath.suGate(MemoryTier.DDR5.totalCapacitySu(),
             NetworkMath.requiredSuForRpm(terminal.demandSu(), MemoryTier.DDR5.totalBandwidthRpm(),
                 terminal.demandRpm())),
             1.0E-9D);
-        assertEquals(0.9375D, utilization(terminal.demandRpm(), MemoryTier.DDR5.totalBandwidthRpm()), 1.0E-9D);
-        assertEquals(0.9375D, utilization(terminal.demandSu(), MemoryTier.DDR5.totalCapacitySu()), 1.0E-9D);
+        assertEquals(0.96875D, utilization(terminal.demandRpm(), MemoryTier.DDR5.totalBandwidthRpm()), 1.0E-9D);
+        assertEquals(0.96875D, utilization(terminal.demandSu(), MemoryTier.DDR5.totalCapacitySu()), 1.0E-9D);
     }
 
     private static Mix mix(int machines) {

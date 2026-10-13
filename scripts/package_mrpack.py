@@ -8,6 +8,8 @@ import hashlib
 import json
 import shutil
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -21,12 +23,13 @@ import pack_version  # noqa: E402  (sibling release version rules)
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "manifest" / "mods.json"
+SHADER_MANIFEST = ROOT / "manifest" / "shaderpacks.json"
 DEFAULT_INSTANCE_DIR = (
     Path.home() / "Library" / "Application Support" / "minecraft" / "versions" / "DimensionWorks"
 )
 FORGE_VERSION = "47.4.23"
 USER_AGENT = "DimensionWorks-Packager/0.1"
-OVERRIDE_DIRS = ("defaultconfigs", "kubejs", "resourcepacks", "shaderpacks")
+OVERRIDE_DIRS = ("defaultconfigs", "kubejs", "resourcepacks")
 VERBOSE = False
 REPO_CONFIG_OVERRIDE_DIRS = ("config",)
 IGNORED_OVERRIDE_FILES = {".DS_Store", "README", "README.md"}
@@ -53,10 +56,19 @@ def request_json(url: str) -> Any:
 
 
 def download(url: str, destination: Path) -> None:
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=180) as response:
-        with destination.open("wb") as output:
-            shutil.copyfileobj(response, output)
+    for attempt in range(4):
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        try:
+            with urllib.request.urlopen(request, timeout=180) as response:
+                with destination.open("wb") as output:
+                    shutil.copyfileobj(response, output)
+            return
+        except (OSError, TimeoutError, urllib.error.URLError) as error:
+            if attempt == 3:
+                raise
+            time.sleep(2**attempt)
+            last_error = error
+    raise last_error
 
 
 def hashes(path: Path) -> tuple[str, str, int]:
@@ -108,6 +120,71 @@ def mod_file(
         "downloads": [download_url],
         "fileSize": size,
     }
+
+
+def shaderpack_file(
+    filename: str,
+    download_url: str,
+    sha1: str,
+    sha512: str,
+    size: int,
+) -> dict[str, Any]:
+    return {
+        "path": f"shaderpacks/{filename}",
+        "hashes": {"sha1": sha1, "sha512": sha512},
+        "downloads": [download_url],
+        "fileSize": size,
+    }
+
+
+def verify_shader_hashes(
+    shaderpack: dict[str, Any],
+    sha1: str,
+    sha512: str,
+    size: int,
+) -> None:
+    identity = shaderpack["id"]
+    if sha1.lower() != shaderpack["sha1"].lower():
+        raise ValueError(f"{identity}: SHA-1 mismatch: expected {shaderpack['sha1']}, got {sha1}")
+    if sha512.lower() != shaderpack["sha512"].lower():
+        raise ValueError(
+            f"{identity}: SHA-512 mismatch: expected {shaderpack['sha512']}, got {sha512}"
+        )
+    if size != int(shaderpack["size"]):
+        raise ValueError(f"{identity}: size mismatch: expected {shaderpack['size']}, got {size}")
+
+
+def resolve_shaderpack_modrinth(shaderpack: dict[str, Any]) -> dict[str, Any]:
+    version = request_json(
+        f"https://api.modrinth.com/v2/version/{shaderpack['version_id']}"
+    )
+    selected = next(
+        (
+            item
+            for item in version.get("files", [])
+            if item.get("filename") == shaderpack["filename"]
+        ),
+        None,
+    )
+    if selected is None:
+        raise ValueError(
+            f"{shaderpack['id']}: Modrinth version has no file {shaderpack['filename']!r}"
+        )
+    sha1 = selected["hashes"]["sha1"]
+    sha512 = selected["hashes"]["sha512"]
+    size = int(selected["size"])
+    verify_shader_hashes(shaderpack, sha1, sha512, size)
+    return shaderpack_file(shaderpack["filename"], selected["url"], sha1, sha512, size)
+
+
+def resolve_shaderpack_curseforge(
+    shaderpack: dict[str, Any], cache_dir: Path
+) -> dict[str, Any]:
+    url = curseforge_url(shaderpack)
+    path = cached_file(cache_dir, "shaderpacks", shaderpack["file_name"], url)
+    sha1, sha512, size = hashes(path)
+    verify_shader_hashes(shaderpack, sha1, sha512, size)
+    return shaderpack_file(shaderpack["file_name"], url, sha1, sha512, size)
 
 
 def resolve_modrinth(mod: dict[str, Any]) -> dict[str, Any]:
@@ -204,6 +281,7 @@ def copy_override_file(
 
 def build_pack(version: str, output: Path, cache_dir: Path, instance_dir: Path) -> str:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    shader_manifest = json.loads(SHADER_MANIFEST.read_text(encoding="utf-8"))
     index_files: list[dict[str, Any]] = []
     in_repo_mods: list[Path] = []
     seen_paths: set[str] = set()
@@ -240,6 +318,23 @@ def build_pack(version: str, output: Path, cache_dir: Path, instance_dir: Path) 
         seen_paths.add(path)
         if source != "in-repo":
             index_files.append(entry)
+
+    shaderpacks = shader_manifest["shaderpacks"]
+    for shaderpack in shaderpacks:
+        source = shaderpack["source"]
+        if source == "modrinth":
+            entry = resolve_shaderpack_modrinth(shaderpack)
+        elif source == "curseforge":
+            entry = resolve_shaderpack_curseforge(shaderpack, cache_dir)
+        else:
+            raise ValueError(
+                f"{shaderpack['id']}: unsupported shaderpack source {source!r}"
+            )
+        path = entry["path"]
+        if path in seen_paths:
+            raise ValueError(f"duplicate pack path: {path}")
+        seen_paths.add(path)
+        index_files.append(entry)
 
     staging = output.parent / f".{output.stem}.staging"
     if staging.exists():
@@ -299,7 +394,8 @@ def build_pack(version: str, output: Path, cache_dir: Path, instance_dir: Path) 
 
     return (
         f"{output} ({output.stat().st_size} bytes), "
-        f"{len(index_files)} downloaded mods, {len(in_repo_mods)} in-repo mods, "
+        f"{len(index_files)} downloaded files, {len(in_repo_mods)} in-repo mods, "
+        f"{len(shaderpacks)} shaderpacks, "
         f"{copied - len(in_repo_mods)} override files"
     )
 
@@ -350,7 +446,7 @@ def main() -> None:
         print("step: pack-version")
         print(f"detail: {error}")
         raise SystemExit(1)
-    output = args.output or ROOT / "dist" / f"DimensionWorks-{version}.mrpack"
+    output = args.output or Path("/Users/szx/Desktop/整合包产物") / f"DimensionWorks-{version}.mrpack"
     hook_summary = "skipped"
     if not args.skip_hook:
         ok, message = pack_hook.run_all(

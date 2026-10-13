@@ -3,32 +3,30 @@ package dev.szx.dimensionworks.mekstress.memory;
 import com.loliball.appliedcreate.energy.MEGearboxBlockEntity;
 import com.simibubi.create.content.kinetics.KineticNetwork;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
+import com.simibubi.create.content.kinetics.base.IRotate;
 import dev.szx.dimensionworks.mekstress.MekStressConfig;
-import dev.szx.dimensionworks.mekstress.api.IMEGearboxExportState;
 import dev.szx.dimensionworks.mekstress.core.MachinePowerMath;
-import dev.szx.dimensionworks.mekstress.core.PowerRouteSafety;
+import dev.szx.dimensionworks.mekstress.core.MachineFootprint;
 import dev.szx.dimensionworks.mekstress.core.MachineTier;
+import dev.szx.dimensionworks.mekstress.core.PowerRouteSafety;
+import dev.szx.dimensionworks.mekstress.core.MechanicalCharge;
 import dev.szx.dimensionworks.rpmlimit.RpmLimitManager;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
+import mekanism.api.energy.IEnergyContainer;
+import mekanism.api.math.FloatingLong;
+import mekanism.common.capabilities.energy.MachineEnergyContainer;
 import mekanism.common.tile.base.TileEntityMekanism;
+import mekanism.common.block.attribute.Attribute;
+import mekanism.common.block.attribute.AttributeHasBounding;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.GlobalPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.Nullable;
 
-/** Routes eligible Mekanism machines through one adjacent Create kinetic source. */
+/** Routes eligible Mekanism machines through any adjacent Create kinetic network member. */
 public final class MachinePowerManager {
-    private static final Map<TileEntityMekanism, DirectSource> ROUTE_CACHE =
-        Collections.synchronizedMap(new WeakHashMap<>());
-
     private MachinePowerManager() {
     }
 
@@ -78,9 +76,28 @@ public final class MachinePowerManager {
         return hasMechanicalPower(route) ? MachinePowerMath.workRate(rpm, tierRpm) : 0.0D;
     }
 
+    public static double productionMultiplier(TileEntityMekanism tile) {
+        return productionMultiplier(tile, powerRoute(tile));
+    }
+
+    public static double productionMultiplier(TileEntityMekanism tile, @Nullable DirectSource route) {
+        int rpm = currentRpm(route);
+        int tierRpm = MekStressConfig.machineRpm(tier(tile));
+        return hasMechanicalPower(route) ? MachinePowerMath.productionMultiplier(rpm, tierRpm) : 0.0D;
+    }
+
+    public static double throughputMultiplier(TileEntityMekanism tile) {
+        return throughputMultiplier(tile, powerRoute(tile));
+    }
+
+    public static double throughputMultiplier(TileEntityMekanism tile, @Nullable DirectSource route) {
+        int rpm = currentRpm(route);
+        int tierRpm = MekStressConfig.machineRpm(tier(tile));
+        return hasMechanicalPower(route) ? MachinePowerMath.throughputMultiplier(rpm, tierRpm) : 0.0D;
+    }
+
     public static boolean consumeForProcessing(TileEntityMekanism tile) {
-        DirectSource route = powerRoute(tile);
-        return hasMechanicalPower(route);
+        return hasMechanicalPower(powerRoute(tile));
     }
 
     @Nullable
@@ -91,44 +108,30 @@ public final class MachinePowerManager {
         }
 
         DirectSource best = null;
-        float bestRpm = -1.0F;
-        for (Direction direction : Direction.values()) {
-            BlockPos pos = tile.getBlockPos().relative(direction);
-            BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (!(blockEntity instanceof KineticBlockEntity kinetic)) {
-                continue;
-            }
-            MEGearboxBlockEntity gearbox = findExportGearbox(kinetic);
-            if (gearbox == null) {
+        Map<BlockPos, List<Direction>> candidates = MachineFootprint.kineticCandidates(
+            tile.getBlockPos(), boundingPositions(tile));
+        for (Map.Entry<BlockPos, List<Direction>> entry : candidates.entrySet()) {
+            BlockEntity blockEntity = level.getBlockEntity(entry.getKey());
+            if (!(blockEntity instanceof KineticBlockEntity kinetic) || !facesMachine(level, kinetic, entry.getValue())) {
                 continue;
             }
 
-            boolean running = isExportRunning(gearbox);
-            float rpm = running ? effectiveKineticRpm(kinetic, gearbox) : 0.0F;
-            DirectSource candidate = new DirectSource(kinetic, gearbox, rpm, running && rpm > 0.0F);
-            if (!routeStillPresent(candidate)) {
-                rpm = 0.0F;
-                running = false;
-                candidate = new DirectSource(kinetic, gearbox, 0.0F, false);
+            KineticNetwork network = kinetic.getOrCreateNetwork();
+            if (network == null) {
+                continue;
             }
-            if (best == null || rpm > bestRpm) {
+
+            float networkRpm = effectiveNetworkRpm(kinetic);
+            boolean running = networkRpm > 0.0F
+                && !kinetic.isOverStressed()
+                && (kinetic.hasSource() || kinetic.isSource());
+            float availableRpm = running ? networkRpm : 0.0F;
+            DirectSource candidate = new DirectSource(kinetic, network, networkRpm, availableRpm, running);
+            if (isBetterRoute(candidate, best)) {
                 best = candidate;
-                bestRpm = rpm;
             }
         }
-        if (best != null) {
-            ROUTE_CACHE.put(tile, best);
-            return best;
-        }
-
-        DirectSource cached = ROUTE_CACHE.get(tile);
-        if (cached != null && routeStillPresent(cached)) {
-            DirectSource stalled = new DirectSource(cached.source(), cached.gearbox(), 0.0F, false);
-            ROUTE_CACHE.put(tile, stalled);
-            return stalled;
-        }
-        ROUTE_CACHE.remove(tile);
-        return null;
+        return best;
     }
 
     public static void updateDirectStress(TileEntityMekanism tile, @Nullable DirectSource route) {
@@ -136,28 +139,38 @@ public final class MachinePowerManager {
         if (level == null || level.isClientSide) {
             return;
         }
-        GlobalPos machine = GlobalPos.of(level.dimension(), tile.getBlockPos());
         boolean assign = route != null && PowerRouteSafety.shouldAssignStress(
             true, route.running(), route.rpm(), routeStillPresent(route));
-        DirectStressRegistry.Change change = assign
-            ? DirectStressRegistry.assign(machine, route.source(), MachinePowerMath.stressPerRpm(1.0F))
-            : DirectStressRegistry.clear(machine);
-        if (!change.changed()) {
-            return;
-        }
-        refreshStress(change.previous());
-        if (change.current() != change.previous()) {
-            refreshStress(change.current());
+        if (assign) {
+            MachineKineticRegistry.sync(tile, route.network(), memberRpm(route));
+        } else {
+            MachineKineticRegistry.detach(tile);
         }
     }
 
+    private static float memberRpm(DirectSource route) {
+        return route.networkRpm();
+    }
+
     public static void clearForRemoval(TileEntityMekanism tile) {
-        ROUTE_CACHE.remove(tile);
+        MachineKineticRegistry.detach(tile);
+    }
+
+    /** Keeps real MachineEnergyContainer storage in sync with the virtual mechanical contract. */
+    public static void updateMechanicalEnergy(TileEntityMekanism tile, @Nullable DirectSource route) {
         Level level = tile.getLevel();
         if (level == null || level.isClientSide) {
             return;
         }
-        updateDirectStress(tile, null);
+        boolean powered = hasMechanicalPower(route);
+        for (IEnergyContainer container : tile.getEnergyContainers(null)) {
+            if (container instanceof MachineEnergyContainer<?> machineContainer) {
+                FloatingLong target = powered
+                    ? MechanicalCharge.rechargeOneTick(machineContainer.getEnergy(), machineContainer.getMaxEnergy())
+                    : FloatingLong.ZERO;
+                machineContainer.setEnergy(target);
+            }
+        }
     }
 
     @Nullable
@@ -179,113 +192,52 @@ public final class MachinePowerManager {
         if (configuredRpm <= 0) {
             return 0;
         }
-        float limited = Math.abs(RpmLimitManager.clamp(gearbox, configuredRpm));
-        return Math.min(Math.max(0, Math.round(limited)), MekStressConfig.directMaxRpm());
+        float limitedRpm = RpmLimitManager.clamp(gearbox, configuredRpm);
+        return Math.round(MachinePowerMath.directRpm(limitedRpm, MekStressConfig.directMaxRpm()));
     }
 
-    private static boolean isExportRunning(MEGearboxBlockEntity gearbox) {
-        return (Object) gearbox instanceof IMEGearboxExportState state
-            && state.dimensionworks$isExportRunning()
-            && state.dimensionworks$getExportChargedSu() > 0L;
+    private static float effectiveNetworkRpm(KineticBlockEntity kinetic) {
+        float limitedRpm = RpmLimitManager.clamp(kinetic, kinetic.getTheoreticalSpeed());
+        return MachinePowerMath.directRpm(limitedRpm, MekStressConfig.directMaxRpm());
     }
 
-    private static float effectiveKineticRpm(KineticBlockEntity kinetic, MEGearboxBlockEntity gearbox) {
-        if (kinetic.isOverStressed()) {
-            return 0.0F;
-        }
-        float propagated = Math.abs(RpmLimitManager.clamp(kinetic, kinetic.getTheoreticalSpeed()));
-        int outputRpm = (Object) gearbox instanceof IMEGearboxExportState state
-            ? Math.max(0, state.dimensionworks$getExportOutputRpm())
-            : 0;
-        return Math.min(Math.min(propagated, outputRpm), MekStressConfig.directMaxRpm());
+    private static List<BlockPos> boundingPositions(TileEntityMekanism tile) {
+        AttributeHasBounding bounding = Attribute.get(tile.getBlockState(), AttributeHasBounding.class);
+        return bounding == null
+            ? List.of()
+            : bounding.getPositions(tile.getBlockPos(), tile.getBlockState()).toList();
     }
 
-    @Nullable
-    private static MEGearboxBlockEntity findExportGearbox(KineticBlockEntity kinetic) {
-        if (kinetic instanceof MEGearboxBlockEntity gearbox
-            && gearbox.getMode() == MEGearboxBlockEntity.Mode.EXPORT) {
-            return gearbox;
-        }
-        if (!kinetic.hasNetwork()) {
-            return null;
-        }
-        KineticNetwork network = kinetic.getOrCreateNetwork();
-        if (network == null) {
-            return null;
-        }
-        for (KineticBlockEntity source : network.sources.keySet()) {
-            if (source instanceof MEGearboxBlockEntity gearbox
-                && gearbox.getMode() == MEGearboxBlockEntity.Mode.EXPORT) {
-                return gearbox;
+    private static boolean facesMachine(Level level, KineticBlockEntity kinetic, List<Direction> machineToKinetic) {
+        for (Direction direction : machineToKinetic) {
+            if (shaftFacesMachine(level, kinetic, direction)) {
+                return true;
             }
         }
-        for (KineticBlockEntity member : network.members.keySet()) {
-            if (member instanceof MEGearboxBlockEntity gearbox
-                && gearbox.getMode() == MEGearboxBlockEntity.Mode.EXPORT) {
-                return gearbox;
-            }
+        return false;
+    }
+
+    private static boolean isBetterRoute(@Nullable DirectSource candidate, @Nullable DirectSource current) {
+        if (current == null) {
+            return true;
         }
-        return null;
+        if (candidate.rpm() != current.rpm()) {
+            return candidate.rpm() > current.rpm();
+        }
+        return candidate.networkRpm() > current.networkRpm();
     }
 
     private static double downstreamLoad(MEGearboxBlockEntity gearbox, int effectiveRpm) {
+        if (!gearbox.hasNetwork()) {
+            return 0.0D;
+        }
+        KineticNetwork network = gearbox.getOrCreateNetwork();
+        if (network == null) {
+            return 0.0D;
+        }
         double load = 0.0D;
-        Set<KineticNetwork> networks = new HashSet<>();
-        Set<KineticBlockEntity> representedMembers = new HashSet<>();
-        if (gearbox.hasNetwork()) {
-            KineticNetwork ownNetwork = gearbox.getOrCreateNetwork();
-            if (ownNetwork != null) {
-                networks.add(ownNetwork);
-            }
-        }
-        collectCachedNetworks(gearbox, networks);
-        for (KineticNetwork network : networks) {
-            for (var entry : network.members.entrySet()) {
-                KineticBlockEntity member = entry.getKey();
-                representedMembers.add(member);
-                load += Math.max(0.0F, entry.getValue()) * effectiveMemberRpm(member, effectiveRpm);
-            }
-        }
-        return load + cachedMachineLoad(gearbox, effectiveRpm, representedMembers);
-    }
-
-    private static void collectCachedNetworks(MEGearboxBlockEntity gearbox, Set<KineticNetwork> networks) {
-        synchronized (ROUTE_CACHE) {
-            for (DirectSource route : ROUTE_CACHE.values()) {
-                if (route.gearbox() != gearbox || !route.source().hasNetwork()) {
-                    continue;
-                }
-                KineticNetwork network = route.source().getOrCreateNetwork();
-                if (network != null) {
-                    networks.add(network);
-                }
-            }
-        }
-    }
-
-    private static double cachedMachineLoad(MEGearboxBlockEntity gearbox, int effectiveRpm,
-                                           Set<KineticBlockEntity> representedMembers) {
-        List<TileEntityMekanism> stale = new ArrayList<>();
-        double load = 0.0D;
-        synchronized (ROUTE_CACHE) {
-            for (var entry : ROUTE_CACHE.entrySet()) {
-                DirectSource route = entry.getValue();
-                if (route.gearbox() != gearbox) {
-                    continue;
-                }
-                if (representedMembers.contains(route.source())) {
-                    continue;
-                }
-                if (!routeStillPresent(route)) {
-                    stale.add(entry.getKey());
-                    continue;
-                }
-                float memberRpm = effectiveMemberRpm(route.source(), effectiveRpm);
-                load += MachinePowerMath.stressPerRpm(1.0F) * memberRpm;
-            }
-            for (TileEntityMekanism machine : stale) {
-                ROUTE_CACHE.remove(machine);
-            }
+        for (var entry : network.members.entrySet()) {
+            load += Math.max(0.0F, entry.getValue()) * effectiveMemberRpm(entry.getKey(), effectiveRpm);
         }
         return load;
     }
@@ -294,47 +246,39 @@ public final class MachinePowerManager {
         if (networkRpm <= 0) {
             return 0.0F;
         }
+        if (member instanceof IVirtualKineticMember) {
+            return Math.max(0.0F, Math.abs(networkRpm));
+        }
         return Math.max(0.0F, Math.abs(RpmLimitManager.clamp(member, networkRpm)));
+    }
+
+    private static boolean shaftFacesMachine(Level level, KineticBlockEntity kinetic, Direction machineToKinetic) {
+        if (!(kinetic.getBlockState().getBlock() instanceof IRotate rotate)) {
+            return false;
+        }
+        Direction kineticFace = machineToKinetic.getOpposite();
+        return rotate.hasShaftTowards(level, kinetic.getBlockPos(), kinetic.getBlockState(), kineticFace);
     }
 
     private static boolean routeStillPresent(DirectSource route) {
         KineticBlockEntity source = route.source();
-        MEGearboxBlockEntity gearbox = route.gearbox();
         Level level = source.getLevel();
-        if (level == null || level.isClientSide || source.isRemoved() || gearbox.isRemoved()
-            || gearbox.getLevel() != level || gearbox.getMode() != MEGearboxBlockEntity.Mode.EXPORT
-            || !source.hasNetwork() || !gearbox.hasNetwork()) {
+        if (level == null || level.isClientSide || source.isRemoved() || !source.hasNetwork()) {
             return false;
         }
-        if (level.getBlockEntity(source.getBlockPos()) != source
-            || level.getBlockEntity(gearbox.getBlockPos()) != gearbox) {
-            return false;
-        }
-        return PowerRouteSafety.sameNetwork(source.getOrCreateNetwork(), gearbox.getOrCreateNetwork());
+        return level.getBlockEntity(source.getBlockPos()) == source
+            && source.getOrCreateNetwork() == route.network();
     }
 
     public record DirectSource(
         KineticBlockEntity source,
-        MEGearboxBlockEntity gearbox,
+        KineticNetwork network,
+        float networkRpm,
         float rpm,
         boolean running
     ) {
     }
 
     public record GearboxDemand(int requestedRpm, long requestedSuPerTick, double fullSpeedLoad) {
-    }
-
-    private static void refreshStress(@Nullable KineticBlockEntity source) {
-        if (source == null || source.getLevel() == null
-            || !PowerRouteSafety.canRefreshStress(
-                true, source.isRemoved(), source.getLevel().isClientSide, source.hasNetwork())) {
-            return;
-        }
-        KineticNetwork network = source.getOrCreateNetwork();
-        if (network == null) {
-            return;
-        }
-        network.updateStressFor(source, source.calculateStressApplied());
-        network.updateStress();
     }
 }

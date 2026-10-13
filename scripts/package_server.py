@@ -521,7 +521,7 @@ def main() -> int:
             args.instance_dir.expanduser().resolve(),
             skip_build=args.skip_build,
             verbose=args.verbose,
-            requested_version=str(current.next_patch()),
+            requested_version=str(version),
         )
         if not ok:
             print("PACK-HOOK FAIL")
