@@ -15,10 +15,6 @@ jobs:
     name: Package client and server
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    env:
-      CI_INSTANCE_DIR: ${{ runner.temp }}/dimensionworks-instance
-      PACK_CACHE_DIR: ${{ runner.temp }}/dimensionworks-pack-cache
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -37,9 +33,13 @@ jobs:
 
       - name: Prepare client validation instance
         run: |
+          instance_dir="$RUNNER_TEMP/dimensionworks-instance"
+          cache_dir="$RUNNER_TEMP/dimensionworks-pack-cache"
           python3 scripts/prepare_ci_instance.py \
-            --instance-dir "$CI_INSTANCE_DIR" \
-            --cache-dir "$PACK_CACHE_DIR"
+            --instance-dir "$instance_dir" \
+            --cache-dir "$cache_dir"
+          echo "CI_INSTANCE_DIR=$instance_dir" >> "$GITHUB_ENV"
+          echo "PACK_CACHE_DIR=$cache_dir" >> "$GITHUB_ENV"
 
       - name: Build and package server
         run: |
