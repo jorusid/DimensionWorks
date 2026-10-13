@@ -11,5 +11,6 @@
 - [`localization.md`](localization.md)：客户端简体中文覆盖范围、术语规则与校验流程
 - [`superpowers/specs/2026-09-27-dimension-cave-factories-design.md`](superpowers/specs/2026-09-27-dimension-cave-factories-design.md)：六维洞穴工厂总设计与渊海首版实现范围
 - [`superpowers/specs/2026-09-27-cave-self-propagation-design.md`](superpowers/specs/2026-09-27-cave-self-propagation-design.md)：六维基础产物的 Create 自增殖主链与残渣备链
+- [`superpowers/specs/2026-10-13-gear-heart-industrial-quotas-design.md`](superpowers/specs/2026-10-13-gear-heart-industrial-quotas-design.md)：齿轮之心七阶段工业瓶颈、修复祝福与跨模组额度边界
 
 专题规格位于 [`superpowers/specs/`](superpowers/specs/)，实施计划位于 [`superpowers/plans/`](superpowers/plans/)。
