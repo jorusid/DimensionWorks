@@ -45,8 +45,12 @@ jobs:
           _sys.path.insert(0, "scripts")
           import pack_version
           latest = sys.argv[1].strip() or None
-          target = pack_version.resolve_release_version(pack_version.read_current_version(), latest)
-          Path("VERSION").write_text(f"{target}\n", encoding="utf-8")
+          current = pack_version.read_current_version()
+          baseline = current
+          if latest:
+              baseline = max(baseline, pack_version.PackVersion.parse(latest[1:]))
+          Path("VERSION").write_text(f"{baseline}\n", encoding="utf-8")
+          target = baseline.next_patch()
           print(target)
           PY
           )"
