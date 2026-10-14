@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+import hashlib
+import sys
+import tempfile
+import unittest
+import zipfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+import build_server_delta  # noqa: E402
+import pack_manifest  # noqa: E402
+
+
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def write_zip(path: Path, files: dict[str, bytes], manifest_version: str) -> None:
+    entries = tuple(
+        pack_manifest.ManifestEntry(
+            "archive",
+            name,
+            "sha256",
+            sha256(data),
+            name,
+        )
+        for name, data in sorted(files.items())
+    )
+    manifest = pack_manifest.UpdateManifest(
+        kind="server",
+        version=manifest_version,
+        release=f"v{manifest_version}",
+        base="none",
+        entries=entries,
+    )
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, data in sorted(files.items()):
+            archive.writestr(name, data)
+        archive.writestr(pack_manifest.MANIFEST_NAME, pack_manifest.render_manifest(manifest))
+
+
+class ServerDeltaTest(unittest.TestCase):
+    def test_delta_contains_only_changed_and_new_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            base = root / "base.zip"
+            new = root / "new.zip"
+            output = root / "delta.zip"
+            write_zip(base, {"mods/old.jar": b"old", "config/same.cfg": b"same"}, "0.0.1")
+            write_zip(
+                new,
+                {"mods/new.jar": b"new", "config/same.cfg": b"same", "config/changed.cfg": b"changed"},
+                "0.0.2",
+            )
+            build_server_delta.build_server_delta(base, new, output)
+            with zipfile.ZipFile(output) as archive:
+                self.assertEqual(
+                    sorted(archive.namelist()),
+                    ["config/changed.cfg", "mods/new.jar"],
+                )
+                self.assertEqual(archive.read("config/changed.cfg"), b"changed")
+
+    def test_empty_delta_is_valid_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / "empty.zip"
+            build_server_delta.write_empty_delta(output)
+            with zipfile.ZipFile(output) as archive:
+                self.assertEqual(archive.namelist(), [])
+
+    def test_rejects_new_zip_without_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            base = root / "base.zip"
+            new = root / "new.zip"
+            output = root / "delta.zip"
+            with zipfile.ZipFile(base, "w") as archive:
+                archive.writestr("mods/a.jar", b"a")
+            with zipfile.ZipFile(new, "w") as archive:
+                archive.writestr("mods/a.jar", b"b")
+            with self.assertRaisesRegex(build_server_delta.DeltaError, "manifest"):
+                build_server_delta.build_server_delta(base, new, output)
+
+
+if __name__ == "__main__":
+    unittest.main()

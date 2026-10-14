@@ -31,6 +31,34 @@ jobs:
         with:
           gradle-version: '8.8'
 
+      - name: Resolve release version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          latest_tag="$(gh release view --json tagName -q .tagName 2>/dev/null || true)"
+          version="$(python3 - "$latest_tag" <<'PY'
+          import sys
+          from pathlib import Path
+          import sys as _sys
+          _sys.path.insert(0, "scripts")
+          import pack_version
+          latest = sys.argv[1].strip() or None
+          target = pack_version.resolve_release_version(pack_version.read_current_version(), latest)
+          Path("VERSION").write_text(f"{target}\n", encoding="utf-8")
+          print(target)
+          PY
+          )"
+          tag="v${version}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+          echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Prepare client validation instance
         run: |
           instance_dir="$RUNNER_TEMP/dimensionworks-instance"
@@ -42,74 +70,156 @@ jobs:
           echo "PACK_CACHE_DIR=$cache_dir" >> "$GITHUB_ENV"
 
       - name: Build and package server
+        env:
+          PACK_VERSION: ${{ steps.version.outputs.version }}
+          LATEST_TAG: ${{ steps.version.outputs.latest_tag }}
         run: |
           set -euo pipefail
-          version="$(python3 -c 'import sys; sys.path.insert(0, "scripts"); import pack_version; print(pack_version.read_current_version().next_patch())')"
+          mkdir -p dist
           python3 scripts/package_server.py \
-            --version "$version" \
+            --version "$PACK_VERSION" \
+            --base-release "${LATEST_TAG:-none}" \
             --instance-dir "$CI_INSTANCE_DIR" \
             --cache-dir "$PACK_CACHE_DIR" \
-            --output "dist/DimensionWorks-Server-${version}.zip"
-          echo "PACK_VERSION=${version}" >> "$GITHUB_ENV"
+            --output "dist/DimensionWorks-Server-${PACK_VERSION}.zip" \
+            --manifest-output "dist/DimensionWorks-Server-${PACK_VERSION}-update-manifest.tsv"
+
+      - name: Build server delta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACK_VERSION: ${{ steps.version.outputs.version }}
+          LATEST_TAG: ${{ steps.version.outputs.latest_tag }}
+        run: |
+          set -euo pipefail
+          delta="dist/DimensionWorks-Server-${PACK_VERSION}-delta.zip"
+          if [[ -n "$LATEST_TAG" ]]; then
+            previous_version="${LATEST_TAG#v}"
+            previous="$RUNNER_TEMP/DimensionWorks-Server-${previous_version}.zip"
+            gh release download "$LATEST_TAG" \
+              --pattern "DimensionWorks-Server-${previous_version}.zip" \
+              --dir "$(dirname "$previous")" \
+              --clobber
+            python3 scripts/build_server_delta.py \
+              --base "$previous" \
+              --new "dist/DimensionWorks-Server-${PACK_VERSION}.zip" \
+              --output "$delta"
+          else
+            python3 scripts/build_server_delta.py \
+              --new "dist/DimensionWorks-Server-${PACK_VERSION}.zip" \
+              --output "$delta" \
+              --empty
+          fi
 
       - name: Package client
+        env:
+          PACK_VERSION: ${{ steps.version.outputs.version }}
+          LATEST_TAG: ${{ steps.version.outputs.latest_tag }}
         run: |
           set -euo pipefail
           python3 scripts/package_mrpack.py \
             --version "$PACK_VERSION" \
+            --base-release "${LATEST_TAG:-none}" \
             --instance-dir "$CI_INSTANCE_DIR" \
             --cache-dir "$PACK_CACHE_DIR" \
             --output "dist/DimensionWorks-${PACK_VERSION}.mrpack" \
+            --manifest-output "dist/DimensionWorks-${PACK_VERSION}-update-manifest.tsv" \
             --skip-build
 
-      - name: Verify release archives
+      - name: Copy standalone update scripts
+        run: |
+          set -euo pipefail
+          cp release-updaters/update-dimensionworks-client.sh dist/
+          cp release-updaters/update-dimensionworks-client.bat dist/
+          cp release-updaters/update-dimensionworks-server.sh dist/
+          cp release-updaters/update-dimensionworks-server.bat dist/
+
+      - name: Verify release assets
+        env:
+          PACK_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
           unzip -t "dist/DimensionWorks-${PACK_VERSION}.mrpack"
           unzip -t "dist/DimensionWorks-Server-${PACK_VERSION}.zip"
+          if [[ "$(wc -c < "dist/DimensionWorks-Server-${PACK_VERSION}-delta.zip")" -gt 22 ]]; then
+            unzip -t "dist/DimensionWorks-Server-${PACK_VERSION}-delta.zip"
+          fi
           unzip -p "dist/DimensionWorks-${PACK_VERSION}.mrpack" modrinth.index.json | jq -e . >/dev/null
-          unzip -l "dist/DimensionWorks-Server-${PACK_VERSION}.zip" | grep -q 'start.sh'
+          cmp "dist/DimensionWorks-${PACK_VERSION}-update-manifest.tsv" \
+              <(unzip -p "dist/DimensionWorks-${PACK_VERSION}.mrpack" dimensionworks-update-manifest.tsv)
+          cmp "dist/DimensionWorks-Server-${PACK_VERSION}-update-manifest.tsv" \
+              <(unzip -p "dist/DimensionWorks-Server-${PACK_VERSION}.zip" dimensionworks-update-manifest.tsv)
+          if unzip -Z1 "dist/DimensionWorks-${PACK_VERSION}.mrpack" | grep -E '(^|/)update-dimensionworks-.*\.(sh|bat)$'; then
+            echo "Updater script embedded in client package" >&2
+            exit 1
+          fi
+          if unzip -Z1 "dist/DimensionWorks-Server-${PACK_VERSION}.zip" | grep -E '(^|/)update-dimensionworks-.*\.(sh|bat)$'; then
+            echo "Updater script embedded in server package" >&2
+            exit 1
+          fi
           (
             cd dist
-            shasum -a 256 \
+            sha256sum \
               "DimensionWorks-${PACK_VERSION}.mrpack" \
               "DimensionWorks-Server-${PACK_VERSION}.zip" \
+              "DimensionWorks-${PACK_VERSION}-update-manifest.tsv" \
+              "DimensionWorks-Server-${PACK_VERSION}-update-manifest.tsv" \
+              "DimensionWorks-Server-${PACK_VERSION}-delta.zip" \
+              update-dimensionworks-client.sh \
+              update-dimensionworks-client.bat \
+              update-dimensionworks-server.sh \
+              update-dimensionworks-server.bat \
               > SHA256SUMS
           )
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dimensionworks-${{ env.PACK_VERSION }}
+          name: dimensionworks-${{ steps.version.outputs.version }}
           if-no-files-found: error
           retention-days: 14
-          path: |
-            dist/DimensionWorks-${{ env.PACK_VERSION }}.mrpack
-            dist/DimensionWorks-Server-${{ env.PACK_VERSION }}.zip
-            dist/SHA256SUMS
+          path: dist/*
 
       - name: Publish latest GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          PACK_VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          tag="v${PACK_VERSION}"
           title="DimensionWorks ${PACK_VERSION}"
-          notes="Minecraft 1.20.1 Forge 客户端与服务端发行包。"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" \
-              "dist/DimensionWorks-${PACK_VERSION}.mrpack" \
-              "dist/DimensionWorks-Server-${PACK_VERSION}.zip" \
-              dist/SHA256SUMS \
-              --clobber
-            gh release edit "$tag" --latest --title "$title" --notes "$notes"
-          else
-            gh release create "$tag" \
-              --target "$GITHUB_SHA" \
-              --latest \
-              --title "$title" \
-              --notes "$notes" \
-              "dist/DimensionWorks-${PACK_VERSION}.mrpack" \
-              "dist/DimensionWorks-Server-${PACK_VERSION}.zip" \
-              dist/SHA256SUMS
+          notes="Minecraft 1.20.1 Forge 客户端、服务端、独立更新器与增量资产。"
+          assets=(
+            "dist/DimensionWorks-${PACK_VERSION}.mrpack"
+            "dist/DimensionWorks-Server-${PACK_VERSION}.zip"
+            "dist/DimensionWorks-${PACK_VERSION}-update-manifest.tsv"
+            "dist/DimensionWorks-Server-${PACK_VERSION}-update-manifest.tsv"
+            "dist/DimensionWorks-Server-${PACK_VERSION}-delta.zip"
+            "dist/update-dimensionworks-client.sh"
+            "dist/update-dimensionworks-client.bat"
+            "dist/update-dimensionworks-server.sh"
+            "dist/update-dimensionworks-server.bat"
+            dist/SHA256SUMS
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing to overwrite it." >&2
+            exit 1
+          fi
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --latest \
+            --title "$title" \
+            --notes "$notes" \
+            "${assets[@]}"
+
+      - name: Commit released version
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): record ${TAG}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi

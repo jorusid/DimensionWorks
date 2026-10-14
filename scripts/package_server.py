@@ -19,6 +19,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pack_hook  # noqa: E402  (sibling packaging preflight hook)
+import pack_manifest  # noqa: E402  (sibling update manifest helpers)
 import package_mrpack  # noqa: E402  (sibling shared manifest download helpers)
 import pack_version  # noqa: E402  (sibling release version rules)
 
@@ -442,7 +443,16 @@ def write_zip(staging: Path, output: Path) -> None:
     temporary.replace(output)
 
 
-def build_server_pack(version: str, output: Path, cache_dir: Path, java: str, *, verbose: bool) -> str:
+def build_server_pack(
+    version: str,
+    output: Path,
+    cache_dir: Path,
+    java: str,
+    *,
+    verbose: bool,
+    manifest_output: Path | None = None,
+    base_release: str | None = None,
+) -> str:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     if manifest.get("minecraft", {}).get("loader") != "forge":
         raise ValueError("server packaging currently supports Forge only")
@@ -475,6 +485,25 @@ def build_server_pack(version: str, output: Path, cache_dir: Path, java: str, *,
             pack_version_value=version,
             servers_mods=len(server_mods),
         )
+        release = f"v{version}"
+        update_manifest = pack_manifest.make_server_manifest(
+            staging,
+            version,
+            release,
+            base_release,
+        )
+        manifest_bytes = pack_manifest.render_manifest(update_manifest)
+        (staging / pack_manifest.MANIFEST_NAME).write_bytes(manifest_bytes)
+        if manifest_output is not None:
+            manifest_output.parent.mkdir(parents=True, exist_ok=True)
+            manifest_output.write_bytes(manifest_bytes)
+        pack_manifest.validate_no_updater_scripts(
+            [
+                path.relative_to(staging).as_posix()
+                for path in sorted(staging.rglob("*"))
+                if path.is_file()
+            ]
+        )
         validate_server_tree(staging, len(server_mods))
         write_zip(staging, output)
     finally:
@@ -491,6 +520,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", default=None, help="server pack version; defaults to VERSION")
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument(
+        "--manifest-output",
+        type=Path,
+        default=None,
+        help="write the standalone server update manifest here",
+    )
+    parser.add_argument(
+        "--base-release",
+        default=None,
+        help="previous release tag used by update compatibility",
+    )
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIR)
     parser.add_argument("--java", default=None, help="Java executable used only by the Forge installer")
     parser.add_argument("--instance-dir", type=Path, default=DEFAULT_INSTANCE_DIR)
@@ -513,6 +553,9 @@ def main() -> int:
         args.output.expanduser().resolve()
         if args.output
         else ROOT / "dist" / f"DimensionWorks-Server-{version}.zip"
+    )
+    manifest_output = args.manifest_output or output.with_name(
+        f"{output.stem}-update-manifest.tsv"
     )
 
     hook_summary = "skipped"
@@ -537,6 +580,8 @@ def main() -> int:
             cache_dir,
             java,
             verbose=args.verbose,
+            manifest_output=manifest_output.resolve(),
+            base_release=args.base_release,
         )
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
         print("SERVER PACK FAIL")

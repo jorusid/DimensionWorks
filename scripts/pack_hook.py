@@ -30,6 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_localization  # noqa: E402  (sibling localization coverage check)
+import pack_manifest  # noqa: E402  (sibling update manifest helpers)
 import pack_version  # noqa: E402  (sibling release version rules)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -111,6 +112,43 @@ def check_localization_overlay(instance_dir: Path) -> CheckResult:
 def check_instance(instance_dir: Path) -> CheckResult:
     missing = [str(path) for path in (instance_dir / "config",) if not path.is_dir()]
     return CheckResult("instance-config", not missing, str(instance_dir), missing)
+
+
+def check_update_assets() -> CheckResult:
+    problems: list[str] = []
+    names = sorted(pack_manifest.UPDATER_SCRIPT_NAMES)
+    for name in names:
+        path = ROOT / "release-updaters" / name
+        if not path.is_file():
+            problems.append(f"missing standalone updater: {path.relative_to(ROOT)}")
+            continue
+        data = path.read_bytes()
+        if b"\r" in data:
+            problems.append(f"{name}: updater must use LF line endings")
+        if name.endswith(".sh") and not data.startswith(b"#!/usr/bin/env bash\n"):
+            problems.append(f"{name}: shell updater must start with #!/usr/bin/env bash")
+        if name.endswith(".bat") and not data.lower().startswith(b"@echo off"):
+            problems.append(f"{name}: batch updater must start with @echo off")
+
+    try:
+        pack_manifest.render_manifest(
+            pack_manifest.UpdateManifest(
+                kind="client",
+                version="0.0.1",
+                release="v0.0.1",
+                base="none",
+                entries=(),
+            )
+        )
+    except pack_manifest.ManifestError as error:
+        problems.append(f"manifest validator failed: {error}")
+
+    return CheckResult(
+        "update-assets",
+        not problems,
+        f"{len(names)} standalone updater scripts",
+        problems,
+    )
 
 
 def check_shaderpack_manifest() -> CheckResult:
@@ -378,6 +416,7 @@ def run_all(
     started = time.monotonic()
     checks = [
         check_manifest,
+        check_update_assets,
         check_shaderpack_manifest,
         lambda: check_pack_version(
             requested_version,

@@ -18,6 +18,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pack_hook  # noqa: E402  (sibling packaging preflight hook)
+import pack_manifest  # noqa: E402  (sibling update manifest helpers)
 import pack_version  # noqa: E402  (sibling release version rules)
 
 
@@ -279,7 +280,14 @@ def copy_override_file(
     return 1
 
 
-def build_pack(version: str, output: Path, cache_dir: Path, instance_dir: Path) -> str:
+def build_pack(
+    version: str,
+    output: Path,
+    cache_dir: Path,
+    instance_dir: Path,
+    manifest_output: Path | None = None,
+    base_release: str | None = None,
+) -> str:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     shader_manifest = json.loads(SHADER_MANIFEST.read_text(encoding="utf-8"))
     index_files: list[dict[str, Any]] = []
@@ -384,9 +392,34 @@ def build_pack(version: str, output: Path, cache_dir: Path, instance_dir: Path) 
         shutil.copy2(jar, mods_override / jar.name)
     copied += len(in_repo_mods)
 
+    release = f"v{version}"
+    update_manifest = pack_manifest.make_client_manifest(
+        index_files,
+        staging,
+        version,
+        release,
+        base_release,
+    )
+    manifest_bytes = pack_manifest.render_manifest(update_manifest)
+    (staging / pack_manifest.MANIFEST_NAME).write_bytes(manifest_bytes)
+    if manifest_output is not None:
+        manifest_output.parent.mkdir(parents=True, exist_ok=True)
+        manifest_output.write_bytes(manifest_bytes)
+
     output.parent.mkdir(parents=True, exist_ok=True)
+    archive_paths = [
+        "modrinth.index.json",
+        pack_manifest.MANIFEST_NAME,
+        *(
+            path.relative_to(staging).as_posix()
+            for path in sorted(overrides.rglob("*"))
+            if path.is_file()
+        ),
+    ]
+    pack_manifest.validate_no_updater_scripts(archive_paths)
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.write(staging / "modrinth.index.json", "modrinth.index.json")
+        archive.write(staging / pack_manifest.MANIFEST_NAME, pack_manifest.MANIFEST_NAME)
         for path in sorted(overrides.rglob("*")):
             if path.is_file():
                 archive.write(path, path.relative_to(staging).as_posix())
@@ -422,6 +455,17 @@ def main() -> None:
         default=None,
     )
     parser.add_argument(
+        "--manifest-output",
+        type=Path,
+        default=None,
+        help="write the standalone client update manifest here",
+    )
+    parser.add_argument(
+        "--base-release",
+        default=None,
+        help="previous release tag used by update compatibility",
+    )
+    parser.add_argument(
         "--cache-dir",
         type=Path,
         default=Path("/private/tmp/dimensionworks-pack-cache"),
@@ -447,6 +491,9 @@ def main() -> None:
         print(f"detail: {error}")
         raise SystemExit(1)
     output = args.output or Path("/Users/szx/Desktop/整合包产物") / f"DimensionWorks-{version}.mrpack"
+    manifest_output = args.manifest_output or output.with_name(
+        f"{output.stem}-update-manifest.tsv"
+    )
     hook_summary = "skipped"
     if not args.skip_hook:
         ok, message = pack_hook.run_all(
@@ -467,6 +514,8 @@ def main() -> None:
         output.resolve(),
         args.cache_dir.resolve(),
         args.instance_dir.expanduser().resolve(),
+        manifest_output=manifest_output.resolve(),
+        base_release=args.base_release,
     )
     pack_version.write_current_version(version)
     print(f"PACK OK: {pack_summary} | hook: {hook_summary}")

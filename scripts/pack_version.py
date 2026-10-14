@@ -89,3 +89,21 @@ def resolve_version(
         raise VersionRuleError(f"版本必须从 {baseline} 递增到 {expected}；{rule}，实际为 {target}")
 
     return target
+
+
+def resolve_release_version(
+    local: PackVersion | str,
+    latest_tag: str | None,
+) -> PackVersion:
+    """Resolve the next patch release from local and GitHub release state."""
+    baseline = local if isinstance(local, PackVersion) else PackVersion.parse(local)
+    if latest_tag:
+        tag = latest_tag.strip()
+        if not tag.startswith("v"):
+            raise VersionRuleError(f"GitHub Release 标签必须以 v 开头：{latest_tag!r}")
+        try:
+            latest = PackVersion.parse(tag[1:])
+        except VersionRuleError as error:
+            raise VersionRuleError(f"GitHub Release 标签版本无效：{latest_tag!r}") from error
+        baseline = max(baseline, latest)
+    return baseline.next_patch()

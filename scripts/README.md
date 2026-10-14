@@ -14,7 +14,7 @@ python3 scripts/generate_dimension_key_texture.py
 
 ## 生成齿轮之心与修复碎片贴图
 
-以 `docs/assets/gear_heart_reference.png` 为用户提供的模板，使用 Pillow 去除黑底并像素化为 32x32，再生成常态、破损、诅咒和祝福四态；脚本同时绘制七个独立轮廓与配色的 32x32 修复碎片贴图：
+以 `docs/assets/gear_heart_reference.png` 为用户提供的模板，使用 Pillow 去除黑底并像素化为 32x32，再生成常态、破损、诅咒和祝福四态；脚本同时绘制七个修复碎片共用的 32x32 占位贴图：
 
 ```sh
 python3 scripts/pixelate_gear_heart_textures.py
@@ -22,7 +22,7 @@ python3 scripts/pixelate_gear_heart_textures.py
 
 脚本依赖 Pillow；未安装时请使用隔离的虚拟环境安装，避免改写系统 Python。
 
-脚本输出到 `kubejs/assets/kubejs/textures/item/`，并生成 `docs/assets/gear_heart_states_preview.png` 与 `docs/assets/gear_heart_fragments_preview.png` 放大预览。
+脚本输出到 `kubejs/assets/kubejs/textures/item/`，并生成 `docs/assets/gear_heart_states_preview.png` 放大预览。
 
 ## 打包整合包
 
@@ -70,6 +70,17 @@ python3 scripts/package_server.py
 python3 scripts/package_server.py --output ~/Desktop/DimensionWorks-Server.zip
 ```
 
+## 独立增量更新器
+
+更新器是发布资产，不是 Python 工具，也不会进入 `.mrpack` 或服务端 ZIP。每个 Release 发布四个脚本：
+
+- `update-dimensionworks-client.sh` / `.bat`
+- `update-dimensionworks-server.sh` / `.bat`
+
+首次使用时把对应脚本复制到客户端实例根目录或服务端根目录执行。脚本默认查询 GitHub Latest Release，也支持 `--release vX.Y.Z`、`--package <本地完整包>`、`--url <完整包 URL>` 和 `--help`。更新器读取包内或 Release 侧的 `dimensionworks-update-manifest.tsv`，只复制或下载摘要变化的受管文件，并在旧状态缺失时从受管目录建立基线，删除旧包遗留文件。`.dimensionworks-update/state.tsv` 记录版本和受管文件状态，事务目录保存回滚备份。
+
+客户端保留存档、日志、截图和启动器私有数据；服务端保留世界、日志、`eula.txt`、`server.properties`、`user_jvm_args.txt`、白名单、封禁和运行数据。运行客户端前退出游戏，运行服务端前停止进程。服务端优先使用 `DimensionWorks-Server-<版本>-delta.zip`，差量缺失、跨版本或本地文件漂移时自动回退完整 ZIP。
+
 ## 打包前钩子
 
 `scripts/pack_hook.py` 是打包预检钩子。`scripts/package_mrpack.py` 每次运行都会自动先跑它，也可以单独执行：
@@ -93,6 +104,7 @@ python3 scripts/pack_hook.py --skip-build
 - `quest-graph`：FTB 任务 ID 唯一、依赖存在、无循环、括号平衡。
 - `recipe-ids`：脚本中的配方 ID 不与数据包文件路径冲突。
 - `in-repo-build`：逐个执行 `gradle build --no-daemon`，并确认产物 jar 名与清单版本一致。
+- `update-assets`：确认四个独立 `.sh/.bat` 更新器存在、使用 LF、没有 Python 运行时依赖，并验证 TSV 清单校验器可用。
 
 输出约定：失败时打印 `PACK-HOOK FAIL` 加失败步骤与截断后的错误日志；成功时只打印一行 `PACK-HOOK OK: ...`。打包脚本会把钩子结果附在同一行成功信息里。
 
@@ -136,4 +148,4 @@ echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command"
 
 ## GitHub Actions 发行
 
-手动触发 `.github/workflows/release-pack.yml` 后，工作流会在 GitHub Runner 上下载固定的客户端 Mod，运行完整预检并构建自研 Mod，然后生成客户端 `.mrpack` 与服务端 ZIP。客户端按当前 `VERSION` 的下一个补丁号发布；两个产物上传为工作流 artifacts，并创建或更新对应的 `v<版本>` GitHub Release，同时标记为 Latest。
+手动触发 `.github/workflows/release-pack.yml` 后，工作流先查询 GitHub 最新 Release，以本地 `VERSION` 与远端标签较大者为基线推进补丁版本；目标标签已存在时直接失败，绝不覆盖。随后生成客户端 `.mrpack`、服务端 ZIP、两个独立更新清单、服务端差量 ZIP、四个独立更新脚本和 `SHA256SUMS`，上传工作流 artifacts 并创建对应的 `v<版本>` GitHub Release。发布成功后把新的 `VERSION` 提交回触发分支。
