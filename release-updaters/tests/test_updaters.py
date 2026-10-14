@@ -17,6 +17,7 @@ UPDATERS = ROOT / "release-updaters"
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import pack_manifest  # noqa: E402
+import build_server_delta  # noqa: E402
 
 SCRIPT_NAMES = (
     "update-dimensionworks-client.sh",
@@ -66,6 +67,8 @@ class UpdaterScriptContractTest(unittest.TestCase):
                 self.assertIn("--package", text)
                 self.assertIn("--url", text)
                 self.assertIn("--help", text)
+                self.assertIn("-delta.zip", text)
+                self.assertIn("[进度]", text)
                 self.assertIn(".dimensionworks-update", text)
                 self.assertIn("state.tsv", text)
                 self.assertIn("VERSION", text)
@@ -106,6 +109,7 @@ class UpdaterScriptContractTest(unittest.TestCase):
                 self.assertIn("powershell", text.lower())
                 self.assertIn("-NoProfile", text)
                 self.assertIn("-ExecutionPolicy", text)
+                self.assertIn("$ProgressPreference = 'Continue'", text)
 
 
 class FixtureFactory:
@@ -118,6 +122,7 @@ class FixtureFactory:
         version: str,
         files: dict[str, bytes],
         remote: dict[str, bytes] | None = None,
+        base: str | None = None,
     ) -> Path:
         staging = self.temp / f"client-{version}"
         (staging / "overrides").mkdir(parents=True)
@@ -140,6 +145,7 @@ class FixtureFactory:
             staging,
             version=version,
             release=f"v{version}",
+            base=base,
         )
         manifest_bytes = pack_manifest.render_manifest(manifest)
         (staging / pack_manifest.MANIFEST_NAME).write_bytes(manifest_bytes)
@@ -155,6 +161,7 @@ class FixtureFactory:
         *,
         version: str,
         files: dict[str, bytes],
+        base: str | None = None,
     ) -> Path:
         staging = self.temp / f"server-{version}"
         staging.mkdir(parents=True)
@@ -166,6 +173,7 @@ class FixtureFactory:
             staging,
             version=version,
             release=f"v{version}",
+            base=base,
         )
         (staging / pack_manifest.MANIFEST_NAME).write_bytes(
             pack_manifest.render_manifest(manifest)
@@ -312,9 +320,123 @@ class ShellClientFixtureTest(unittest.TestCase):
         self.assertFalse((self.instance / "config" / "stale.cfg").exists())
         self.assertEqual((self.instance / "config" / "new.cfg").read_bytes(), b"new")
 
+    def test_release_url_uses_client_delta_without_full_package(self) -> None:
+        first = self.fixture.write_client_package(
+            version="0.0.8",
+            files={"config/value.cfg": b"old"},
+        )
+        result = self.run_script(first)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        second = self.fixture.write_client_package(
+            version="0.0.9",
+            files={"config/value.cfg": b"new"},
+            base="v0.0.8",
+        )
+        delta = self.temp / "DimensionWorks-0.0.9-delta.zip"
+        build_server_delta.build_client_delta(first, second, delta)
+        manifest = self.temp / "DimensionWorks-0.0.9-update-manifest.tsv"
+        with zipfile.ZipFile(second) as package:
+            manifest.write_bytes(package.read(pack_manifest.MANIFEST_NAME))
+
+        requested: list[str] = []
+
+        class Handler(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, format: str, *args: object) -> None:
+                requested.append(self.path)
+
+        handler = lambda *args, **kwargs: Handler(
+            *args, directory=str(self.temp), **kwargs
+        )
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            url = f"http://127.0.0.1:{server.server_port}/{second.name}"
+            result = subprocess.run(
+                ["bash", str(self.instance / "update-dimensionworks-client.sh"), "--url", url],
+                cwd=self.instance,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.instance / "config" / "value.cfg").read_bytes(), b"new")
+        self.assertIn("/" + manifest.name, requested)
+        self.assertIn("/" + delta.name, requested)
+        self.assertNotIn("/" + second.name, requested)
+
 
 
 class ShellServerFixtureTest(unittest.TestCase):
+    def test_release_url_uses_server_delta_without_full_package(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            fixture = FixtureFactory(temp)
+            instance = Path(temp) / "server"
+            instance.mkdir()
+            shutil.copy2(
+                UPDATERS / "update-dimensionworks-server.sh",
+                instance / "update-dimensionworks-server.sh",
+            )
+            first = fixture.write_server_package(
+                version="0.0.8",
+                files={"config/value.cfg": b"old"},
+            )
+            result = subprocess.run(
+                ["bash", str(instance / "update-dimensionworks-server.sh"), "--package", str(first)],
+                cwd=instance,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            second = fixture.write_server_package(
+                version="0.0.9",
+                files={"config/value.cfg": b"new"},
+                base="v0.0.8",
+            )
+            delta = Path(temp) / "DimensionWorks-Server-0.0.9-delta.zip"
+            build_server_delta.build_server_delta(first, second, delta)
+            manifest = Path(temp) / "DimensionWorks-Server-0.0.9-update-manifest.tsv"
+            with zipfile.ZipFile(second) as package:
+                manifest.write_bytes(package.read(pack_manifest.MANIFEST_NAME))
+
+            requested: list[str] = []
+
+            class Handler(http.server.SimpleHTTPRequestHandler):
+                def log_message(self, format: str, *args: object) -> None:
+                    requested.append(self.path)
+
+            handler = lambda *args, **kwargs: Handler(
+                *args, directory=temp, **kwargs
+            )
+            server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                url = f"http://127.0.0.1:{server.server_port}/{second.name}"
+                result = subprocess.run(
+                    ["bash", str(instance / "update-dimensionworks-server.sh"), "--url", url],
+                    cwd=instance,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=2)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((instance / "config" / "value.cfg").read_bytes(), b"new")
+            self.assertIn("/" + manifest.name, requested)
+            self.assertIn("/" + delta.name, requested)
+            self.assertNotIn("/" + second.name, requested)
+
     def test_fresh_server_install_writes_default_runtime_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             fixture = FixtureFactory(temp)

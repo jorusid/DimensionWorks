@@ -24,6 +24,7 @@
 | `DimensionWorks-Server-<version>.zip` | 服务端完整安装包 |
 | `DimensionWorks-<version>-update-manifest.tsv` | 客户端完整受管文件清单 |
 | `DimensionWorks-Server-<version>-update-manifest.tsv` | 服务端完整受管文件清单 |
+| `DimensionWorks-<version>-delta.zip` | 客户端相对上一发行版的差量文件 |
 | `DimensionWorks-Server-<version>-delta.zip` | 服务端相对上一发行版的差量文件 |
 | `update-dimensionworks-client.sh` | macOS/Linux 客户端更新器 |
 | `update-dimensionworks-client.bat` | Windows 客户端更新器 |
@@ -144,15 +145,15 @@ archive	config/example.cfg	sha256	<hash>	overrides/config/example.cfg
 ## 客户端更新流程
 
 1. 根据脚本所在目录确定实例根目录，在 `.dimensionworks-update/` 创建原子锁。
-2. 解析参数，获取目标清单与目标 `.mrpack`。
+2. 解析参数，获取目标清单；兼容旧状态时优先获取客户端差量 ZIP。
 3. 校验清单 schema、类型、版本、路径和摘要格式。
 4. 无旧状态时，在受管目录内建立初始状态；受管目录外的文件不纳入删除范围。
-5. 下载并解压 `.mrpack` 到临时目录，执行 ZIP 完整性与路径穿越检查。
+5. 差量不可用、状态不兼容或本地文件漂移时才下载并解压 `.mrpack`，执行 ZIP 完整性与路径穿越检查。
 6. 对每个远程项校验现有文件；只有缺失或摘要不符时下载，并在临时文件上校验成功后再改名。
 7. 对归档项计算当前摘要，与目标清单比较，确定需要复制的最小文件集合。
 8. 把所有旧状态中存在、目标状态中消失的受管文件移入事务备份并删除。
 9. 复制变化文件，校验所有目标摘要。
-10. 原子写入 `VERSION` 与新状态；失败时恢复备份并删除本次新增文件。
+10. 原子写入 `VERSION` 与新状态；失败时恢复备份并删除本次新增文件。Shell 与 Batch 在下载、检查、暂存、应用和删除阶段实时输出进度。
 
 ## 服务端更新流程
 
@@ -164,7 +165,7 @@ archive	config/example.cfg	sha256	<hash>	overrides/config/example.cfg
 4. 完整 ZIP 流程与客户端相同，但清单内归档成员直接位于 ZIP 根目录。
 5. 应用、验证、提交状态与回滚规则一致。
 
-差量 ZIP 由工作流比较上一版完整服务端 ZIP 与新完整 ZIP 生成，只包含新增或内容变化的文件，不包含脚本。首次安装、跨版本更新、没有可靠旧状态、差量缺失或本地受管文件漂移时使用完整 ZIP。
+差量 ZIP 由工作流比较上一版完整包与新完整包生成，只包含新增或内容变化的文件，不包含脚本。客户端与服务端都优先使用差量；首次安装、跨版本更新、没有可靠旧状态、差量缺失或本地受管文件漂移时才使用完整包。
 
 ## 事务、锁与回滚
 

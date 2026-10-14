@@ -29,6 +29,8 @@ OLD_VERSION=""
 LOCK_HELD=0
     TX_ACTIVE=0
 ROOT_DIR=""
+PROGRESS_TOTAL=0
+PROGRESS_DONE=0
 
 usage() {
     printf '%s\n' \
@@ -63,14 +65,40 @@ sha_file() {
 
 download() {
     local url="$1" destination="$2"
+    printf '下载 %s\n' "$url" >&2
     if command -v curl >/dev/null 2>&1; then
-        curl --fail --location --silent --show-error --retry 3 --output "$destination" "$url" ||
+        curl --fail --location --progress-bar --show-error --retry 3 --output "$destination" "$url" ||
             die "下载失败：$url"
     elif command -v wget >/dev/null 2>&1; then
-        wget -q --output-document="$destination" "$url" ||
+        wget --progress=bar:force --output-document="$destination" "$url" ||
             die "下载失败：$url"
     else
         die "系统缺少 curl 或 wget"
+    fi
+}
+
+try_download() {
+    local url="$1" destination="$2"
+    printf '下载 %s\n' "$url" >&2
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --location --progress-bar --show-error --retry 2 --output "$destination" "$url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget --progress=bar:force --output-document="$destination" "$url"
+    else
+        return 1
+    fi
+}
+
+progress_step() {
+    local label="$1"
+    PROGRESS_DONE=$((PROGRESS_DONE + 1))
+    local percent=0
+    if [[ "$PROGRESS_TOTAL" -gt 0 ]]; then
+        percent=$((PROGRESS_DONE * 100 / PROGRESS_TOTAL))
+    fi
+    printf '\r[进度] %d/%d (%d%%) %s' "$PROGRESS_DONE" "$PROGRESS_TOTAL" "$percent" "$label" >&2
+    if [[ "$PROGRESS_DONE" -ge "$PROGRESS_TOTAL" ]]; then
+        printf '\n' >&2
     fi
 }
 
@@ -346,7 +374,9 @@ resolve_sources() {
     if [[ -n "$URL_ARG" ]]; then
         PACKAGE_URL="$URL_ARG"
         case "$PACKAGE_URL" in
-            *.mrpack) ;;
+            *.mrpack)
+                MANIFEST_URL="${PACKAGE_URL%.mrpack}-update-manifest.tsv"
+                ;;
             *) die "--url 必须指向 .mrpack 完整包" ;;
         esac
         return
@@ -393,18 +423,24 @@ main() {
     mkdir "$PACKAGE_ROOT"
 
     resolve_sources
-    case "$PACKAGE_URL" in
-        http://*|https://*)
-            PACKAGE_LOCAL="$WORK_DIR/package.zip"
-            download "$PACKAGE_URL" "$PACKAGE_LOCAL" || die "下载完整客户端包失败"
-            ;;
-        *)
-            PACKAGE_LOCAL="$PACKAGE_URL"
-            ;;
-    esac
     if [[ -n "$MANIFEST_URL" ]]; then
-        download "$MANIFEST_URL" "$TARGET_MANIFEST"
+        if ! try_download "$MANIFEST_URL" "$TARGET_MANIFEST"; then
+            MANIFEST_URL=""
+            case "$PACKAGE_URL" in
+                http://*|https://*)
+                    PACKAGE_LOCAL="$WORK_DIR/package.zip"
+                    download "$PACKAGE_URL" "$PACKAGE_LOCAL" || die "下载完整客户端包失败"
+                    ;;
+                *)
+                    PACKAGE_LOCAL="$PACKAGE_URL"
+                    ;;
+            esac
+            validate_zip "$PACKAGE_LOCAL" "$WORK_DIR/package.entries"
+            unzip -p "$PACKAGE_LOCAL" "$MANIFEST_NAME" > "$TARGET_MANIFEST" ||
+                die "完整包缺少 $MANIFEST_NAME"
+        fi
     else
+        PACKAGE_LOCAL="$PACKAGE_URL"
         validate_zip "$PACKAGE_LOCAL" "$WORK_DIR/package.entries"
         unzip -p "$PACKAGE_LOCAL" "$MANIFEST_NAME" > "$TARGET_MANIFEST" ||
             die "完整包缺少 $MANIFEST_NAME"
@@ -424,13 +460,68 @@ main() {
         OLD_VERSION=""
     fi
     printf 'DimensionWorks 更新：%s -> %s\n' "${OLD_VERSION:-未安装}" "$TARGET_RELEASE"
+    PROGRESS_TOTAL="$(awk 'NR > 6 { count++ } END { print count + 0 }' "$TARGET_MANIFEST")"
+    printf '[进度] 检查 %d 个受管文件\n' "$PROGRESS_TOTAL" >&2
 
-    validate_zip "$PACKAGE_LOCAL" "$WORK_DIR/package.entries"
-    unzip -q "$PACKAGE_LOCAL" -d "$PACKAGE_ROOT" || die "解压完整包失败"
+    local archive_needed=0
+    while IFS=$'\t' read -r action path algorithm value source; do
+        [[ "$action" == "archive" ]] || continue
+        if is_preserved_client "$path"; then continue; fi
+        if [[ ! -f "$ROOT_DIR/$path" ]] || [[ "$(sha_file 256 "$ROOT_DIR/$path")" != "$value" ]]; then
+            archive_needed=1
+            break
+        fi
+    done < <(awk -F '\t' 'NR > 6' "$TARGET_MANIFEST")
+
+    local delta_root="$WORK_DIR/delta"
+    local delta_ready=0
+    if [[ "$archive_needed" -eq 1 && -n "$MANIFEST_URL" && -n "$OLD_VERSION" && "v$OLD_VERSION" == "$target_base" ]]; then
+        local delta_url="${PACKAGE_URL%.mrpack}-delta.zip"
+        if try_download "$delta_url" "$WORK_DIR/delta.zip"; then
+            if (validate_zip "$WORK_DIR/delta.zip" "$WORK_DIR/delta.entries") 2>/dev/null; then
+                mkdir -p "$delta_root"
+                unzip -q "$WORK_DIR/delta.zip" -d "$delta_root" 2>/dev/null || true
+                if [[ -d "$delta_root" ]]; then
+                    delta_ready=1
+                    while IFS=$'\t' read -r action path algorithm value source; do
+                        [[ "$action" == "archive" ]] || continue
+                        if is_preserved_client "$path"; then continue; fi
+                        if [[ -f "$ROOT_DIR/$path" ]] && [[ "$(sha_file 256 "$ROOT_DIR/$path")" == "$value" ]]; then
+                            continue
+                        fi
+                        if [[ ! -f "$delta_root/$source" ]] ||
+                           [[ "$(sha_file 256 "$delta_root/$source")" != "$value" ]]; then
+                            delta_ready=0
+                            break
+                        fi
+                    done < <(awk -F '\t' 'NR > 6' "$TARGET_MANIFEST")
+                    if [[ "$delta_ready" -eq 1 ]]; then
+                        PACKAGE_ROOT="$delta_root"
+                    fi
+                fi
+            fi
+        fi
+    fi
+    if [[ "$archive_needed" -eq 1 && "$delta_ready" -eq 0 ]]; then
+        if [[ ! -f "$PACKAGE_LOCAL" ]]; then
+            case "$PACKAGE_URL" in
+                http://*|https://*)
+                    PACKAGE_LOCAL="$WORK_DIR/package.zip"
+                    download "$PACKAGE_URL" "$PACKAGE_LOCAL" || die "下载完整客户端包失败"
+                    ;;
+                *)
+                    PACKAGE_LOCAL="$PACKAGE_URL"
+                    ;;
+            esac
+        fi
+        validate_zip "$PACKAGE_LOCAL" "$WORK_DIR/package.entries"
+        unzip -q "$PACKAGE_LOCAL" -d "$PACKAGE_ROOT" || die "解压完整包失败"
+    fi
     local manifest_entries="$WORK_DIR/entries.tsv"
     awk -F '\t' 'NR > 6' "$TARGET_MANIFEST" > "$manifest_entries"
     local action path algorithm value source
     while IFS=$'\t' read -r action path algorithm value source; do
+        progress_step "$path"
         if is_preserved_client "$path"; then
             continue
         fi
@@ -488,6 +579,7 @@ main() {
     TX_ACTIVE=1
     if [[ -f "$WORK_DIR/needed" ]]; then
         while IFS=$'\t' read -r path staged; do
+            printf '[应用] %s\n' "$path" >&2
             ensure_no_symlink "$path"
             ensure_parent_dirs "$path"
             log_change "$ROOT_DIR/$path" "$staged"
@@ -500,6 +592,7 @@ main() {
             fi
             local current="$ROOT_DIR/$path"
             [[ -e "$current" && ! -L "$current" ]] || continue
+            printf '[删除] %s\n' "$path" >&2
             log_change "$current" /dev/null
             rm -f -- "$current" || die "无法删除旧受管文件：$path"
         done < "$WORK_DIR/deletes"

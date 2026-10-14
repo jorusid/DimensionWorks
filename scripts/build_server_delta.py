@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a server update delta by comparing two DimensionWorks server ZIPs."""
+"""Create a client or server update delta from two DimensionWorks packages."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import pack_manifest
 
 
 class DeltaError(ValueError):
-    """Raised when a server archive cannot produce a safe delta."""
+    """Raised when an archive cannot produce a safe delta."""
 
 
 def _safe_member(name: str) -> None:
@@ -42,51 +42,56 @@ def _members(archive: zipfile.ZipFile) -> dict[str, zipfile.ZipInfo]:
     return result
 
 
-def _sha256(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> str:
-    digest = hashlib.sha256()
+def _digest(archive: zipfile.ZipFile, info: zipfile.ZipInfo, algorithm: str) -> str:
+    digest = hashlib.new(algorithm)
     with archive.open(info) as source:
         while chunk := source.read(1024 * 1024):
             digest.update(chunk)
     return digest.hexdigest()
 
 
-def _manifest(archive: zipfile.ZipFile) -> pack_manifest.UpdateManifest:
+def _manifest(archive: zipfile.ZipFile, kind: str) -> pack_manifest.UpdateManifest:
     try:
         data = archive.read(pack_manifest.MANIFEST_NAME)
     except KeyError as error:
-        raise DeltaError("new server ZIP has no update manifest") from error
-    return pack_manifest.parse_manifest(data, expected_kind="server")
+        raise DeltaError(f"{kind} package has no update manifest") from error
+    return pack_manifest.parse_manifest(data, expected_kind=kind)
 
 
-def build_server_delta(
+def build_delta(
     base_zip: Path,
     new_zip: Path,
     output: Path,
     *,
+    kind: str,
     manifest: pack_manifest.UpdateManifest | None = None,
 ) -> Path:
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(base_zip) as base, zipfile.ZipFile(new_zip) as new:
         base_members = _members(base)
         new_members = _members(new)
-        update_manifest = manifest or _manifest(new)
-        if update_manifest.kind != "server":
-            raise DeltaError("delta manifest must be a server manifest")
+        update_manifest = manifest or _manifest(new, kind)
+        if update_manifest.kind != kind:
+            raise DeltaError(f"delta manifest must be a {kind} manifest")
         changed: list[str] = []
         for entry in update_manifest.entries:
-            if entry.action != "archive":
+            if kind == "server" and entry.action != "archive":
                 raise DeltaError(f"server delta entry must be archive: {entry.path}")
-            if entry.source != entry.path:
+            if kind == "server" and entry.source != entry.path:
                 raise DeltaError(f"server delta source must match path: {entry.path}")
-            _safe_member(entry.path)
-            new_info = new_members.get(entry.path)
+            if kind == "client" and entry.action == "remote":
+                continue
+            source_name = entry.source
+            _safe_member(source_name)
+            new_info = new_members.get(source_name)
             if new_info is None:
-                raise DeltaError(f"new ZIP is missing manifest file: {entry.path}")
-            if _sha256(new, new_info) != entry.value:
-                raise DeltaError(f"new ZIP digest mismatch: {entry.path}")
-            old_info = base_members.get(entry.path)
-            if old_info is None or _sha256(base, old_info) != entry.value:
-                changed.append(entry.path)
+                raise DeltaError(f"new package is missing manifest file: {source_name}")
+            algorithm = "sha512" if entry.algorithm == "sha512" else "sha256"
+            if _digest(new, new_info, algorithm) != entry.value:
+                raise DeltaError(f"new package digest mismatch: {entry.path}")
+            old_info = base_members.get(source_name)
+            if old_info is None or _digest(base, old_info, algorithm) != entry.value:
+                changed.append(source_name)
 
         with tempfile.TemporaryDirectory(prefix="dimensionworks-delta-") as temp:
             staging = Path(temp)
@@ -115,6 +120,14 @@ def build_server_delta(
     return output
 
 
+def build_server_delta(base_zip: Path, new_zip: Path, output: Path) -> Path:
+    return build_delta(base_zip, new_zip, output, kind="server")
+
+
+def build_client_delta(base_zip: Path, new_zip: Path, output: Path) -> Path:
+    return build_delta(base_zip, new_zip, output, kind="client")
+
+
 def write_empty_delta(output: Path) -> Path:
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".part")
@@ -130,11 +143,8 @@ def main() -> int:
     parser.add_argument("--base", type=Path)
     parser.add_argument("--new", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument(
-        "--empty",
-        action="store_true",
-        help="create an empty delta when no previous release is available",
-    )
+    parser.add_argument("--kind", choices=("client", "server"), default="server")
+    parser.add_argument("--empty", action="store_true")
     args = parser.parse_args()
     try:
         if args.empty:
@@ -144,7 +154,7 @@ def main() -> int:
         else:
             if args.base is None:
                 raise DeltaError("--base is required unless --empty is used")
-            build_server_delta(args.base, args.new, args.output)
+            build_delta(args.base, args.new, args.output, kind=args.kind)
     except (OSError, ValueError, zipfile.BadZipFile, DeltaError) as error:
         print(f"DELTA FAIL: {error}")
         return 1

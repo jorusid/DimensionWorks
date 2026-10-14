@@ -83,6 +83,47 @@ class ServerDeltaTest(unittest.TestCase):
             with self.assertRaisesRegex(build_server_delta.DeltaError, "manifest"):
                 build_server_delta.build_server_delta(base, new, output)
 
+    def test_client_delta_contains_changed_archive_but_not_remote_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            base = root / "base.mrpack"
+            new = root / "new.mrpack"
+            output = root / "client-delta.zip"
+            entries = (
+                pack_manifest.ManifestEntry(
+                    "remote",
+                    "mods/remote.jar",
+                    "sha512",
+                    "a" * 128,
+                    "https://example.com/remote.jar",
+                ),
+                pack_manifest.ManifestEntry(
+                    "archive",
+                    "config/value.cfg",
+                    "sha256",
+                    sha256(b"new"),
+                    "overrides/config/value.cfg",
+                ),
+            )
+            manifest = pack_manifest.UpdateManifest(
+                kind="client",
+                version="0.0.2",
+                release="v0.0.2",
+                base="v0.0.1",
+                entries=entries,
+            )
+            for path, data in (
+                (base, b"old"),
+                (new, b"new"),
+            ):
+                with zipfile.ZipFile(path, "w") as archive:
+                    archive.writestr("overrides/config/value.cfg", data)
+                    archive.writestr(pack_manifest.MANIFEST_NAME, pack_manifest.render_manifest(manifest))
+            build_server_delta.build_client_delta(base, new, output)
+            with zipfile.ZipFile(output) as archive:
+                self.assertEqual(archive.namelist(), ["overrides/config/value.cfg"])
+                self.assertEqual(archive.read("overrides/config/value.cfg"), b"new")
+
 
 if __name__ == "__main__":
     unittest.main()

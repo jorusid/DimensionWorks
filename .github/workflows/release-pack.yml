@@ -129,6 +129,34 @@ jobs:
             --manifest-output "dist/DimensionWorks-${PACK_VERSION}-update-manifest.tsv" \
             --skip-build
 
+      - name: Build client delta
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACK_VERSION: ${{ steps.version.outputs.version }}
+          LATEST_TAG: ${{ steps.version.outputs.latest_tag }}
+        run: |
+          set -euo pipefail
+          delta="dist/DimensionWorks-${PACK_VERSION}-delta.zip"
+          if [[ -n "$LATEST_TAG" ]]; then
+            previous_version="${LATEST_TAG#v}"
+            previous="$RUNNER_TEMP/DimensionWorks-${previous_version}.mrpack"
+            gh release download "$LATEST_TAG" \
+              --pattern "DimensionWorks-${previous_version}.mrpack" \
+              --dir "$(dirname "$previous")" \
+              --clobber
+            python3 scripts/build_server_delta.py \
+              --kind client \
+              --base "$previous" \
+              --new "dist/DimensionWorks-${PACK_VERSION}.mrpack" \
+              --output "$delta"
+          else
+            python3 scripts/build_server_delta.py \
+              --kind client \
+              --new "dist/DimensionWorks-${PACK_VERSION}.mrpack" \
+              --output "$delta" \
+              --empty
+          fi
+
       - name: Copy standalone update scripts
         run: |
           set -euo pipefail
@@ -144,6 +172,9 @@ jobs:
           set -euo pipefail
           unzip -t "dist/DimensionWorks-${PACK_VERSION}.mrpack"
           unzip -t "dist/DimensionWorks-Server-${PACK_VERSION}.zip"
+          if [[ "$(wc -c < "dist/DimensionWorks-${PACK_VERSION}-delta.zip")" -gt 22 ]]; then
+            unzip -t "dist/DimensionWorks-${PACK_VERSION}-delta.zip"
+          fi
           if [[ "$(wc -c < "dist/DimensionWorks-Server-${PACK_VERSION}-delta.zip")" -gt 22 ]]; then
             unzip -t "dist/DimensionWorks-Server-${PACK_VERSION}-delta.zip"
           fi
@@ -156,6 +187,11 @@ jobs:
             echo "Updater script embedded in client package" >&2
             exit 1
           fi
+          if unzip -Z1 "dist/DimensionWorks-${PACK_VERSION}-delta.zip" 2>/dev/null |
+              grep -E '(^|/)update-dimensionworks-.*\.(sh|bat)$'; then
+            echo "Updater script embedded in client delta" >&2
+            exit 1
+          fi
           if unzip -Z1 "dist/DimensionWorks-Server-${PACK_VERSION}.zip" | grep -E '(^|/)update-dimensionworks-.*\.(sh|bat)$'; then
             echo "Updater script embedded in server package" >&2
             exit 1
@@ -164,6 +200,7 @@ jobs:
             cd dist
             sha256sum \
               "DimensionWorks-${PACK_VERSION}.mrpack" \
+              "DimensionWorks-${PACK_VERSION}-delta.zip" \
               "DimensionWorks-Server-${PACK_VERSION}.zip" \
               "DimensionWorks-${PACK_VERSION}-update-manifest.tsv" \
               "DimensionWorks-Server-${PACK_VERSION}-update-manifest.tsv" \
@@ -194,6 +231,7 @@ jobs:
           notes="Minecraft 1.20.1 Forge 客户端、服务端、独立更新器与增量资产。"
           assets=(
             "dist/DimensionWorks-${PACK_VERSION}.mrpack"
+            "dist/DimensionWorks-${PACK_VERSION}-delta.zip"
             "dist/DimensionWorks-Server-${PACK_VERSION}.zip"
             "dist/DimensionWorks-${PACK_VERSION}-update-manifest.tsv"
             "dist/DimensionWorks-Server-${PACK_VERSION}-update-manifest.tsv"

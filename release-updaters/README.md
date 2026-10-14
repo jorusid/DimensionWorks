@@ -9,7 +9,7 @@ update-dimensionworks-server.sh       # macOS / Linux 服务端
 update-dimensionworks-server.bat      # Windows 服务端
 ```
 
-脚本支持 `--release vX.Y.Z`、`--package <本地完整包>`、`--url <完整包 URL>` 和 `--help`。不带参数时查询 `szx-jn/DimensionWorks` 的 GitHub Latest Release；更新器读取发行版的独立 TSV 清单，按摘要只下载或复制变化文件，并删除旧状态中已经不再属于目标版本的受管文件。
+脚本支持 `--release vX.Y.Z`、`--package <本地完整包>`、`--url <完整包 URL>` 和 `--help`。不带参数时查询 `szx-jn/DimensionWorks` 的 GitHub Latest Release；更新器先读取独立 TSV 清单，优先下载 `DimensionWorks-<版本>-delta.zip` 或 `DimensionWorks-Server-<版本>-delta.zip`，只在差量不可用、状态不兼容或本地文件漂移时回退完整包。终端会实时显示下载、检查、暂存、应用和删除进度。
 
 客户端保留 `saves/`、日志、崩溃报告、截图和启动器私有数据；服务端保留世界、EULA、`server.properties`、JVM 参数、白名单、封禁、用户缓存和运行日志。服务端已存在的保留文件不会被新包覆盖。状态和事务日志位于 `.dimensionworks-update/`，成功后只保留状态文件，失败时保留未完成回滚所需的备份。
 

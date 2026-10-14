@@ -28,7 +28,7 @@ del /f /q "%DW_PAYLOAD%" >nul 2>&1
 exit /b %DW_EXIT%
 
 ::PS $ErrorActionPreference = 'Stop'
-::PS $ProgressPreference = 'SilentlyContinue'
+::PS $ProgressPreference = 'Continue'
 ::PS [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 ::PS Add-Type -AssemblyName System.IO.Compression
 ::PS Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -351,7 +351,11 @@ exit /b %DW_EXIT%
 ::PS
 ::PS function Select-Changed($Manifest) {
 ::PS     $result = [Collections.Generic.List[object]]::new()
+::PS     $index = 0
+::PS     Write-Host ('[进度] 检查 ' + $Manifest.Entries.Count + ' 个受管文件')
 ::PS     foreach ($entry in $Manifest.Entries) {
+::PS         $index++
+::PS         Write-Progress -Activity '检查受管文件' -Status $entry.Path -PercentComplete ([int](100 * $index / $Manifest.Entries.Count))
 ::PS         $target = Get-Target $entry.Path
 ::PS         if (Test-PreserveExisting $entry.Path) { continue }
 ::PS         $exists = Test-SafeExisting $target
@@ -359,11 +363,16 @@ exit /b %DW_EXIT%
 ::PS         if ($exists -and (Get-Digest $target $entry.Algorithm) -eq $entry.Digest) { continue }
 ::PS         $result.Add($entry)
 ::PS     }
+::PS     Write-Progress -Activity '检查受管文件' -Completed
 ::PS     $result
 ::PS }
 ::PS
 ::PS function Stage-Entries($Manifest, $Selected, $Package) {
+::PS     $index = 0
 ::PS     foreach ($entry in $Selected) {
+::PS         $index++
+::PS         Write-Host ('[进度] 暂存 ' + $index + '/' + $Selected.Count + ' ' + $entry.Path)
+::PS         Write-Progress -Activity '暂存更新文件' -Status $entry.Path -PercentComplete ([int](100 * $index / $Selected.Count))
 ::PS         $destination = Join-Path $Work ('stage/' + $entry.Path)
 ::PS         if ($entry.Action -eq 'remote') {
 ::PS             Invoke-Download $entry.Source $destination
@@ -378,6 +387,7 @@ exit /b %DW_EXIT%
 ::PS              Fail ('staged file failed verification: ' + $entry.Path)
 ::PS          }
 ::PS      }
+::PS      Write-Progress -Activity '暂存更新文件' -Completed
 ::PS  }
 ::PS
 ::PS function Test-Staged($Manifest, $Selected) {
@@ -452,7 +462,11 @@ exit /b %DW_EXIT%
 ::PS  }
 ::PS
 ::PS function Apply-Operations($Operations) {
+::PS      $index = 0
 ::PS      foreach ($op in $Operations) {
+::PS          $index++
+::PS          Write-Host ('[进度] 应用 ' + $index + '/' + $Operations.Count + ' ' + $op.Entry.Path)
+::PS          Write-Progress -Activity '应用更新文件' -Status $op.Entry.Path -PercentComplete ([int](100 * $index / $Operations.Count))
 ::PS          Ensure-Parent $op.Target
 ::PS          if ($op.Delete) {
 ::PS              [IO.File]::Move($op.Target, $op.Backup)
@@ -472,6 +486,7 @@ exit /b %DW_EXIT%
 ::PS          }
 ::PS          $Applied.Add($op)
 ::PS      }
+::PS      Write-Progress -Activity '应用更新文件' -Completed
 ::PS  }
 ::PS
 ::PS function Write-Metadata([string]$Path, [byte[]]$Bytes, [string]$BackupName) {
@@ -601,11 +616,19 @@ exit /b %DW_EXIT%
 ::PS              $manifest = Read-Embedded $package
 ::PS              $releaseTag = $manifest.Release
 ::PS          } elseif ($urlOption) {
-::PS              $download = Join-Path $Work 'package.download'
-::PS              Invoke-Download $urlOption $download
-::PS              $package = Open-Zip $download
-::PS              $manifest = Read-Embedded $package
-::PS              $releaseTag = $manifest.Release
+::PS              $manifestUrl = $urlOption -replace '\.zip$', '-update-manifest.tsv'
+::PS              $manifestPath = Join-Path $Work 'manifest.tsv'
+::PS              try {
+::PS                  Invoke-Download $manifestUrl $manifestPath
+::PS                  $manifest = Parse-Manifest ([IO.File]::ReadAllBytes($manifestPath))
+::PS                  $releaseTag = $manifest.Release
+::PS              } catch {
+::PS                  $download = Join-Path $Work 'package.download'
+::PS                  Invoke-Download $urlOption $download
+::PS                  $package = Open-Zip $download
+::PS                  $manifest = Read-Embedded $package
+::PS                  $releaseTag = $manifest.Release
+::PS              }
 ::PS          } else {
 ::PS              if ($release) {
 ::PS                  $releaseTag = $release
@@ -655,7 +678,7 @@ exit /b %DW_EXIT%
 ::PS              $compatible = $Script:CurrentState -and
 ::PS                  $Script:CurrentState.Release -eq $manifest.Base -and
 ::PS                  $Script:CurrentState.Base -eq $manifest.Base
-::PS              if ($compatible -and $selected.Count -gt 0 -and $releaseTag) {
+::PS              if ($compatible -and $selected.Count -gt 0 -and $releaseTag -and (-not $package)) {
 ::PS                  try {
 ::PS                      $deltaPath = Join-Path $Work 'server-delta.zip'
 ::PS                      Invoke-Download (AssetUrl $releaseTag ('DimensionWorks-Server-' + $manifest.Version + '-delta.zip')) $deltaPath
