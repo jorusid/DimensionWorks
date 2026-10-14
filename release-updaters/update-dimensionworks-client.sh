@@ -523,7 +523,8 @@ main() {
     if [[ "$KIND" == "client" ]]; then
         awk 'NR <= 6' "$TARGET_MANIFEST" > "$state_tmp"
         while IFS= read -r line; do
-            path="${line%%$'\t'*}"
+            path="${line#*$'\t'}"
+            path="${path%%$'\t'*}"
             if ! is_preserved_client "$path"; then
                 printf '%s\n' "$line" >> "$state_tmp"
             fi

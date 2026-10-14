@@ -601,7 +601,8 @@ main() {
     if [[ "$KIND" == "server" ]]; then
         awk 'NR <= 6' "$TARGET_MANIFEST" > "$state_tmp"
         while IFS= read -r line; do
-            path="${line%%$'\t'*}"
+            path="${line#*$'\t'}"
+            path="${path%%$'\t'*}"
             if ! is_preserved_server "$path"; then
                 printf '%s\n' "$line" >> "$state_tmp"
             fi
