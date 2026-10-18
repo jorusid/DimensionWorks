@@ -483,6 +483,58 @@ download_to_stdout() {
     fi
 }
 
+stop_related_processes() {
+    printf '[第零步] 检查并关闭当前整合包相关进程...\n' >&2
+    local table targets protected changed pid ppid cmd cursor remaining=0
+    table="$(mktemp "${TMPDIR:-/tmp}/dw-processes.XXXXXX")" || die "无法创建进程检查临时文件"
+    ps -axo pid=,ppid=,command= > "$table" || { rm -f "$table"; die "无法枚举进程"; }
+    targets="$table.targets"; protected="$table.protected"; : > "$targets"; : > "$protected"
+    cursor="$"
+    while [[ "$cursor" =~ ^[0-9]+$ ]] && [[ "$cursor" -gt 1 ]]; do
+        local parent_line parent_cmd
+        parent_line="$(awk -v id="$cursor" '$1==id {sub(/^[[:space:]]*[0-9]+[[:space:]]+[0-9]+[[:space:]]+/, ""); print; exit}' "$table")"
+        case "$parent_line" in *java*|*javaw*) break ;; esac
+        printf '%s\n' "$cursor" >> "$protected"
+        cursor="$(awk -v id="$cursor" '$1==id {print $2; exit}' "$table")"
+        [[ -n "$cursor" ]] || break
+    done
+    while read -r pid ppid cmd; do
+        [[ "$pid" =~ ^[0-9]+$ ]] || continue
+        grep -qx "$pid" "$protected" && continue
+        case "$cmd" in
+            *java*|*minecraft*|*Minecraft*)
+                if [[ "$cmd" == *"$ROOT_DIR"* ]]; then
+                    printf '%s\n' "$pid" >> "$targets"
+                elif [[ "$KIND" == "server" && "$cmd" == *"@libraries"* && "$cmd" == *"forge"* && "$cmd" == *"nogui"* ]] && command -v jcmd >/dev/null 2>&1; then
+                    local working
+                    working="$(jcmd "$pid" VM.system_properties 2>/dev/null | sed -n 's/^user.dir=//p' | head -n 1)"
+                    if [[ -n "$working" && "$(cd "$working" 2>/dev/null && pwd -P)" == "$ROOT_DIR" ]]; then
+                        printf '%s\n' "$pid" >> "$targets"
+                    fi
+                fi
+                ;;
+        esac
+    done < "$table"
+    changed=1
+    while [[ "$changed" -eq 1 ]]; do
+        changed=0
+        while read -r pid ppid cmd; do
+            [[ "$pid" =~ ^[0-9]+$ ]] || continue
+            grep -qx "$pid" "$protected" && continue
+            grep -qx "$pid" "$targets" && continue
+            if grep -qx "$ppid" "$targets"; then printf '%s\n' "$pid" >> "$targets"; changed=1; fi
+        done < "$table"
+    done
+    if [[ ! -s "$targets" ]]; then printf '[第零步] 未发现可确认属于当前目录的 Minecraft/Java 进程。\n' >&2; rm -f "$table" "$targets" "$protected"; return; fi
+    while read -r pid; do kill -TERM "$pid" 2>/dev/null || true; done < "$targets"
+    sleep 2
+    while read -r pid; do kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true; done < "$targets"
+    while read -r pid; do kill -0 "$pid" 2>/dev/null && remaining=1 || true; done < "$targets"
+    rm -f "$table" "$targets" "$protected"
+    [[ "$remaining" -eq 0 ]] || die "仍有相关进程无法关闭，停止更新"
+    printf '[第零步] 相关进程已关闭。\n' >&2
+}
+
 main() {
     parse_args "$@"
     ROOT_DIR="$(cd "$(dirname "$0")" && pwd -P)" || die "无法确定实例根目录"
@@ -496,6 +548,7 @@ main() {
     PACKAGE_ROOT="$WORK_DIR/package"
     TARGET_MANIFEST="$WORK_DIR/target.tsv"
     mkdir "$PACKAGE_ROOT"
+    stop_related_processes
 
     resolve_sources
     if [[ -n "$MANIFEST_URL" ]]; then

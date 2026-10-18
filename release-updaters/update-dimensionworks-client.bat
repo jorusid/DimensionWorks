@@ -561,6 +561,56 @@ exit /b %DW_EXIT%
 ::PS      }
 ::PS  }
 ::PS
+::PS function Stop-RelatedProcesses {
+::PS     Write-Host '[第零步] 检查并关闭当前整合包相关进程...'
+::PS     $all = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+::PS     $protected = [Collections.Generic.HashSet[int]]::new()
+::PS     $cursor = $PID
+::PS     while ($cursor -gt 0) {
+::PS         $parent = $all | Where-Object { $_.ProcessId -eq $cursor } | Select-Object -First 1
+::PS         if (-not $parent) { break }
+::PS         if ($parent.Name -in @('java.exe','javaw.exe')) { break }
+::PS         if (-not $protected.Add([int]$cursor)) { break }
+::PS         $cursor = [int]$parent.ParentProcessId
+::PS     }
+::PS     $root = [IO.Path]::GetFullPath($Root).TrimEnd('\')
+::PS     $targets = [Collections.Generic.HashSet[int]]::new()
+::PS     foreach ($p in $all) {
+::PS         if ($protected.Contains([int]$p.ProcessId)) { continue }
+::PS         if ($p.Name -notin @('java.exe','javaw.exe')) { continue }
+::PS         $cmd = [string]$p.CommandLine
+::PS         if ($cmd -and $cmd.IndexOf($root, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+::PS             [void]$targets.Add([int]$p.ProcessId)
+::PS         } elseif ($Kind -eq 'server' -and $cmd -match '@libraries[\\/].*forge.*(win_args|unix_args)\.txt' -and $p.ExecutablePath) {
+::PS             $jcmd = Join-Path ([IO.Path]::GetDirectoryName([string]$p.ExecutablePath)) 'jcmd.exe'
+::PS             if ([IO.File]::Exists($jcmd)) {
+::PS                 $properties = & $jcmd $p.ProcessId 'VM.system_properties' 2>$null
+::PS                 $working = ($properties | Where-Object { $_ -match '^user\.dir=' } | Select-Object -First 1) -replace '^user\.dir=', ''
+::PS                 if ($working) {
+::PS                     try { $working = [IO.Path]::GetFullPath($working).TrimEnd('\\') } catch { $working = '' }
+::PS                     if ($working -and $working.Equals($root, [StringComparison]::OrdinalIgnoreCase)) { [void]$targets.Add([int]$p.ProcessId) }
+::PS                 }
+::PS             }
+::PS         }
+::PS     }
+::PS     $changed = $true
+::PS     while ($changed) {
+::PS         $changed = $false
+::PS         foreach ($p in $all) {
+::PS             if ($protected.Contains([int]$p.ProcessId) -or $targets.Contains([int]$p.ProcessId)) { continue }
+::PS             if ($targets.Contains([int]$p.ParentProcessId)) { [void]$targets.Add([int]$p.ProcessId); $changed = $true }
+::PS         }
+::PS     }
+::PS     if ($targets.Count -eq 0) { Write-Host '[第零步] 未发现可确认属于当前目录的 Java 游戏进程。'; return }
+::PS     foreach ($id in $targets) { try { Stop-Process -Id $id -ErrorAction SilentlyContinue } catch {} }
+::PS     Start-Sleep -Seconds 2
+::PS     foreach ($id in @($targets)) { if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue } }
+::PS     Start-Sleep -Milliseconds 500
+::PS     $remaining = @($targets | Where-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue })
+::PS     if ($remaining.Count -gt 0) { Fail ('仍有相关进程无法关闭，PID: ' + ($remaining -join ', ')) }
+::PS     Write-Host '[第零步] 相关进程已关闭。'
+::PS }
+::PS
 ::PS function Invoke-Update {
 ::PS      $release = $null
 ::PS      $packageOption = $null
@@ -602,6 +652,7 @@ exit /b %DW_EXIT%
 ::PS      [IO.Directory]::CreateDirectory($Work) | Out-Null
 ::PS 
 ::PS      try {
+::PS          Stop-RelatedProcesses
 ::PS          $Script:CurrentState = Read-State
 ::PS          if (-not $Script:CurrentState) { $Script:CurrentState = New-BootstrapState }
 ::PS          $oldVersion = if ($Script:CurrentState) { $Script:CurrentState.Version } else { 'first installation' }

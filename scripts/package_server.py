@@ -118,14 +118,14 @@ START_SH = f"""\
 #!/usr/bin/env bash
 set -euo pipefail
 cd -- "$(dirname -- "${{BASH_SOURCE[0]}}")"
-exec java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.1-{FORGE_VERSION}/unix_args.txt nogui "$@"
+exec java "-Ddimensionworks.instanceDir=$PWD" @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.1-{FORGE_VERSION}/unix_args.txt nogui "$@"
 """
 
 START_BAT = f"""\
 @echo off
 setlocal
 cd /d "%~dp0"
-java @user_jvm_args.txt @libraries\\net\\minecraftforge\\forge\\1.20.1-{FORGE_VERSION}\\win_args.txt nogui %*
+java "-Ddimensionworks.instanceDir=%CD%" @user_jvm_args.txt @libraries\\net\\minecraftforge\\forge\\1.20.1-{FORGE_VERSION}\\win_args.txt nogui %*
 """
 
 
@@ -346,6 +346,7 @@ def install_forge(staging: Path, cache_dir: Path, java: str, *, verbose: bool) -
 
 
 def write_server_files(staging: Path, *, pack_version_value: str, servers_mods: int) -> None:
+    (staging / "VERSION").write_text(f"{pack_version_value}\n", encoding="utf-8")
     (staging / "server.properties").write_text(SERVER_PROPERTIES, encoding="utf-8")
     (staging / "eula.txt").write_text(
         "# Set eula=true only after you agree to the Minecraft EULA:\n"
@@ -406,6 +407,7 @@ bash start.sh
 
 def validate_server_tree(staging: Path, expected_mods: int) -> None:
     required_paths = (
+        Path("VERSION"),
         Path("start.sh"),
         Path("start.bat"),
         Path("run.sh"),
