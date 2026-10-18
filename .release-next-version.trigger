@@ -1,1 +1,1 @@
-One-time trigger to build the next DimensionWorks release.
+Retry one-time trigger to build the next DimensionWorks release.
