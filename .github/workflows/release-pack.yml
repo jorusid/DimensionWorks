@@ -278,7 +278,11 @@ jobs:
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+users.noreply.github.com"
+          git fetch origin "${GITHUB_REF_NAME}"
+          git checkout -B "${GITHUB_REF_NAME}" "origin/${GITHUB_REF_NAME}"
+          released_version="${TAG#v}"
+          printf '%s\\n' "${released_version}" > VERSION
           git add VERSION
           if ! git diff --cached --quiet; then
             git commit -m "chore(release): record ${TAG}"
