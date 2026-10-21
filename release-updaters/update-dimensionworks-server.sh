@@ -66,7 +66,7 @@ sha_file() {
 download_once() {
     local url="$1" destination="$2" timeout_seconds="$3"
     rm -f -- "$destination"
-    printf '[下载] 本资源总预算 120 秒；本源限时 %s 秒：%s\n' "$timeout_seconds" "$url" >&2
+    printf '[下载] 本源限时 %s 秒：%s\n' "$timeout_seconds" "$url" >&2
     if command -v curl >/dev/null 2>&1; then
         curl --fail --location --progress-bar --show-error \
             --connect-timeout 10 --max-time "$timeout_seconds" \
@@ -83,13 +83,10 @@ try_download() {
     local url="$1" destination="$2" candidate elapsed remaining attempts_left slice index=0
     local start_seconds="$SECONDS"
     local -a candidates=("$url")
-    # Keep all fallback attempts within one 120-second budget per resource.
+    # Only GitHub Release assets use mirrors. Every source shares one 120s budget.
     case "$url" in
         https://github.com/*/releases/download/*)
-            candidates+=(
-                "https://ghproxy.net/$url"
-                "https://gh-proxy.com/$url"
-            )
+            candidates+=("https://ghproxy.net/$url" "https://gh-proxy.com/$url")
             ;;
     esac
     for candidate in "${candidates[@]}"; do
@@ -100,19 +97,20 @@ try_download() {
             break
         fi
         attempts_left=$(("${#candidates[@]}" - index))
-        # Divide the remaining budget among remaining sources (40s each for 3 sources).
         slice=$((remaining / attempts_left))
         [[ "$slice" -ge 1 ]] || slice=1
         printf '[下载] 来源 %d/%d：%s\n' "$((index + 1))" "${#candidates[@]}" "$candidate" >&2
         if download_once "$candidate" "$destination" "$slice"; then
             return 0
         fi
-        printf '[下载] 当前源失败/超时，准备切换来源。\n' >&2
+        printf '[下载] 当前源失败/超时，切换下一个来源。\n' >&2
         rm -f -- "$destination"
         index=$((index + 1))
     done
     return 1
-}download() {
+}
+
+download() {
     local url="$1" destination="$2"
     try_download "$url" "$destination" || die "所有下载源均失败：$url"
 }
