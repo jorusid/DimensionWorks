@@ -83,7 +83,7 @@ try_download() {
     local url="$1" destination="$2" candidate elapsed remaining attempts_left slice index=0
     local start_seconds="$SECONDS"
     local -a candidates=("$url")
-    # Only GitHub Release assets use mirrors. Every source shares one 120s budget.
+    # Only GitHub Release assets use mirrors. Every source shares one 120s first-pass budget.
     case "$url" in
         https://github.com/*/releases/download/*)
             candidates+=("https://ghproxy.net/$url" "https://gh-proxy.com/$url")
@@ -93,7 +93,7 @@ try_download() {
         elapsed=$((SECONDS - start_seconds))
         remaining=$((120 - elapsed))
         if [[ "$remaining" -le 0 ]]; then
-            printf '[下载] 本资源总超时 120 秒，停止继续等待：%s\n' "$url" >&2
+            printf '[下载] 本资源首轮总超时 120 秒，进入测速回退。\n' >&2
             break
         fi
         attempts_left=$(("${#candidates[@]}" - index))
@@ -107,10 +107,56 @@ try_download() {
         rm -f -- "$destination"
         index=$((index + 1))
     done
-    return 1
-}
 
-download() {
+    # Non-Release URLs have no known mirror mapping.
+    [[ "${#candidates[@]}" -gt 1 ]] || return 1
+
+    # ICMP ping is often blocked and does not measure HTTPS reachability.
+    # Probe each source's HTTPS endpoint 3 times, 5 seconds apart.
+    local probe_url probe_time total count average best_average=999999 best_index=0
+    local i
+    for i in "${!candidates[@]}"; do
+        case "$i" in
+            0) probe_url="https://github.com" ;;
+            1) probe_url="https://ghproxy.net" ;;
+            2) probe_url="https://gh-proxy.com" ;;
+        esac
+        total=0
+        count=0
+        printf '[测速] 测试来源 %d/3：%s（3 次，间隔 5 秒）\n' "$((i + 1))" "$probe_url" >&2
+        for probe in 1 2 3; do
+            probe_time="$(curl --location --silent --show-error --connect-timeout 5 --max-time 10 \
+                --output /dev/null --write-out '%{time_total}' --head "$probe_url" 2>/dev/null)" || probe_time=""
+            if [[ "$probe_time" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+                total="$(awk -v a="$total" -v b="$probe_time" 'BEGIN { printf "%.6f", a+b }')"
+                count=$((count + 1))
+            fi
+            [[ "$probe" -eq 3 ]] || sleep 5
+        done
+        if [[ "$count" -gt 0 ]]; then
+            average="$(awk -v a="$total" -v n="$count" 'BEGIN { printf "%.6f", a/n }')"
+            printf '[测速] %s 平均 HTTPS 响应时间：%s 秒（%d/3 次成功）\n' "$probe_url" "$average" "$count" >&2
+            if awk -v a="$average" -v b="$best_average" 'BEGIN { exit !(a < b) }'; then
+                best_average="$average"
+                best_index="$i"
+            fi
+        else
+            printf '[测速] %s 三次均失败，跳过。\n' "$probe_url" >&2
+        fi
+    done
+
+    candidate="${candidates[$best_index]}"
+    printf '[下载] 测速回退选择来源：%s；后续固定使用该源，直至下载成功。\n' "$candidate" >&2
+    while true; do
+        rm -f -- "$destination"
+        if download_once "$candidate" "$destination" 120; then
+            return 0
+        fi
+        rm -f -- "$destination"
+        printf '[下载] 选定来源暂时失败，5 秒后继续重试同一来源。按 Ctrl+C 可中止。\n' >&2
+        sleep 5
+    done
+}download() {
     local url="$1" destination="$2"
     try_download "$url" "$destination" || die "所有下载源均失败：$url"
 }
