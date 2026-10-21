@@ -288,11 +288,6 @@ def build_pack(
     manifest_output: Path | None = None,
     base_release: str | None = None,
 ) -> str:
-    recorded_version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    if recorded_version != version:
-        raise ValueError(
-            f"VERSION mismatch before packaging: VERSION={recorded_version}, target={version}"
-        )
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     shader_manifest = json.loads(SHADER_MANIFEST.read_text(encoding="utf-8"))
     index_files: list[dict[str, Any]] = []
@@ -390,7 +385,8 @@ def build_pack(
 
     for relative in REPO_OVERRIDE_FILES:
         copied += copy_override_file(ROOT / relative, overrides, relative)
-    copied += copy_override_file(ROOT / "VERSION", overrides, Path("VERSION"))
+    (overrides / "VERSION").write_text(f"{version}\n", encoding="utf-8")
+    copied += 1
 
     mods_override = overrides / "mods"
     mods_override.mkdir(parents=True, exist_ok=True)
