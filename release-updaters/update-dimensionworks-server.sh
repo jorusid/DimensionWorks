@@ -116,7 +116,7 @@ try_download() {
     local -a candidates=("$url") partials=() sizes=()
     local local_asset=""
     if local_asset="$(find_local_release_asset "$url")"; then
-        printf '[本地包] 使用已有更新资源：%s\\n' "$local_asset" >&2
+        printf '[本地包] 使用已有更新资源：%s\n' "$local_asset" >&2
         cp -- "$local_asset" "$destination" || return 1
         return 0
     fi
@@ -713,7 +713,7 @@ main() {
     fi
     if [[ -n "$local_package" ]]; then
         PACKAGE_LOCAL="$WORK_DIR/package.zip"
-        printf '[本地包] 找到完整更新包：%s\\n' "$local_package" >&2
+        printf '[本地包] 找到完整更新包：%s\n' "$local_package" >&2
         cp -- "$local_package" "$PACKAGE_LOCAL" || die "无法复制本地完整更新包"
         MANIFEST_URL=""
         validate_zip "$PACKAGE_LOCAL" "$WORK_DIR/package.entries"
