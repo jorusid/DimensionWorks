@@ -560,5 +560,126 @@ class ShellServerFixtureTest(unittest.TestCase):
             self.assertEqual((instance / "server.properties").read_text(), "level-name=world\n")
 
 
+
+@unittest.skipUnless(
+    shutil.which("bash") and shutil.which("unzip"), "shell fixture tools unavailable"
+)
+class ShellDownloadRecoveryTest(unittest.TestCase):
+    FAKE_CURL = r"""#!/usr/bin/env bash
+set -eu
+output=""
+url=""
+resume=0
+while (($#)); do
+    case "$1" in
+        --output) output="$2"; shift 2 ;;
+        --continue-at) resume=1; shift 2 ;;
+        http://*|https://*) url="$1"; shift ;;
+        *) shift ;;
+    esac
+done
+if [[ -n "${DW_TEST_CURL_LOG:-}" ]]; then
+    printf '%s\\n' "$url" >> "$DW_TEST_CURL_LOG"
+fi
+if [[ "$url" == *"-update-manifest.tsv" ]]; then
+    printf 'partial-manifest' > "$output"
+    exit 28
+fi
+if [[ "$resume" -eq 1 ]]; then
+    cp "$DW_TEST_PACKAGE" "$output"
+    exit 0
+fi
+case "$url" in
+    *gh-proxy.com*) head -c 300 /dev/zero > "$output" ;;
+    *ghproxy.net*) head -c 200 /dev/zero > "$output" ;;
+    *) head -c 100 /dev/zero > "$output" ;;
+esac
+exit 28
+"""
+
+    def _run_case(self, kind: str, choice: str, *, local_package: bool = False) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
+        temp_ctx = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_ctx.cleanup)
+        temp = Path(temp_ctx.name)
+        fixture = FixtureFactory(temp)
+        instance = temp / "instance"
+        instance.mkdir()
+        script_name = f"update-dimensionworks-{kind}.sh"
+        shutil.copy2(UPDATERS / script_name, instance / script_name)
+        if kind == "client":
+            package = fixture.write_client_package(
+                version="0.0.2", files={"config/recovery.cfg": b"recovered"}
+            )
+        else:
+            package = fixture.write_server_package(
+                version="0.0.2", files={"mods/recovery.jar": b"recovered"}
+            )
+        if local_package:
+            package_in_instance = instance / package.name
+            shutil.copy2(package, package_in_instance)
+        fake_bin = temp / "fake-bin"
+        fake_bin.mkdir()
+        fake_curl = fake_bin / "curl"
+        fake_curl.write_text(self.FAKE_CURL, encoding="utf-8")
+        fake_curl.chmod(0o755)
+        log_path = temp / "curl.log"
+        env = os.environ.copy()
+        env["PATH"] = f"{fake_bin}{os.pathsep}{env.get('PATH', '')}"
+        env["DW_TEST_PACKAGE"] = str(package)
+        env["DW_TEST_CURL_LOG"] = str(log_path)
+        input_text = "" if local_package else f"{choice}\\n{package}\\n"
+        result = subprocess.run(
+            ["bash", str(instance / script_name), "--release", "v0.0.2"],
+            cwd=instance,
+            input=input_text,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+            env=env,
+        )
+        return result, instance, log_path
+
+    def test_choice_one_resumes_source_with_largest_partial_for_client_and_server(self) -> None:
+        for kind in ("client", "server"):
+            with self.subTest(kind=kind):
+                result, instance, _ = self._run_case(kind, "1")
+                self.assertEqual(result.returncode, 0, result.stdout + "\\n" + result.stderr)
+                self.assertIn("所有下载源均失败", result.stdout)
+                self.assertIn("已下载 300 字节", result.stdout)
+                self.assertIn("gh-proxy.com", result.stdout)
+                self.assertIn("从已有部分文件继续", result.stderr)
+                if kind == "client":
+                    self.assertEqual((instance / "config/recovery.cfg").read_bytes(), b"recovered")
+                else:
+                    self.assertEqual((instance / "mods/recovery.jar").read_bytes(), b"recovered")
+
+    def test_choice_two_installs_user_supplied_package_for_client_and_server(self) -> None:
+        for kind in ("client", "server"):
+            with self.subTest(kind=kind):
+                result, instance, _ = self._run_case(kind, "2")
+                self.assertEqual(result.returncode, 0, result.stdout + "\\n" + result.stderr)
+                self.assertIn("所有下载源均失败", result.stdout)
+                self.assertIn("请输入完整更新包", result.stderr)
+                self.assertIn("DimensionWorks-0.0.2", result.stdout)
+                if kind == "client":
+                    self.assertEqual((instance / "config/recovery.cfg").read_bytes(), b"recovered")
+                else:
+                    self.assertEqual((instance / "mods/recovery.jar").read_bytes(), b"recovered")
+
+    def test_existing_complete_package_is_found_without_network_for_client_and_server(self) -> None:
+        for kind in ("client", "server"):
+            with self.subTest(kind=kind):
+                result, instance, log_path = self._run_case(kind, "2", local_package=True)
+                self.assertEqual(result.returncode, 0, result.stdout + "\\n" + result.stderr)
+                self.assertIn("找到完整更新包", result.stderr)
+                self.assertFalse(log_path.exists(), "local package should avoid all network requests")
+                if kind == "client":
+                    self.assertEqual((instance / "config/recovery.cfg").read_bytes(), b"recovered")
+                else:
+                    self.assertEqual((instance / "mods/recovery.jar").read_bytes(), b"recovered")
+
+
+
 if __name__ == "__main__":
     unittest.main()

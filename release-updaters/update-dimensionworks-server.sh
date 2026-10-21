@@ -91,10 +91,35 @@ download_resume() {
     fi
 }
 
+find_local_release_asset() {
+    local url="$1" filename path
+    case "$url" in
+        https://github.com/*/releases/download/*) ;;
+        *) return 1 ;;
+    esac
+    filename="${url##*/}"
+    case "$filename" in
+        *.mrpack|*.zip|*-update-manifest.tsv) ;;
+        *) return 1 ;;
+    esac
+    for path in "$ROOT_DIR/$filename" "$ROOT_DIR/updates/$filename" "$ROOT_DIR/$UPDATE_DIR/$filename"; do
+        [[ -f "$path" && -r "$path" ]] || continue
+        printf '%s\n' "$path"
+        return 0
+    done
+    return 1
+}
+
 try_download() {
     local url="$1" destination="$2" candidate elapsed remaining attempts_left slice index=0 size choice local_path
     local start_seconds="$SECONDS" best_index=0 best_size=-1
     local -a candidates=("$url") partials=() sizes=()
+    local local_asset=""
+    if local_asset="$(find_local_release_asset "$url")"; then
+        printf '[本地包] 使用已有更新资源：%s\\n' "$local_asset" >&2
+        cp -- "$local_asset" "$destination" || return 1
+        return 0
+    fi
     case "$url" in
         https://github.com/*/releases/download/*) candidates+=("https://ghproxy.net/$url" "https://gh-proxy.com/$url") ;;
     esac
@@ -682,13 +707,25 @@ main() {
     TARGET_MANIFEST="$WORK_DIR/target.tsv"
     mkdir "$PACKAGE_ROOT"
     resolve_sources
+    local local_package=""
     if [[ -n "$MANIFEST_URL" ]]; then
+        local_package="$(find_local_release_asset "$PACKAGE_URL" || true)"
+    fi
+    if [[ -n "$local_package" ]]; then
+        PACKAGE_LOCAL="$WORK_DIR/package.zip"
+        printf '[本地包] 找到完整更新包：%s\\n' "$local_package" >&2
+        cp -- "$local_package" "$PACKAGE_LOCAL" || die "无法复制本地完整更新包"
+        MANIFEST_URL=""
+        validate_zip "$PACKAGE_LOCAL" "$WORK_DIR/package.entries"
+        unzip -p "$PACKAGE_LOCAL" "$MANIFEST_NAME" > "$TARGET_MANIFEST" ||
+            die "完整包缺少 $MANIFEST_NAME"
+    elif [[ -n "$MANIFEST_URL" ]]; then
         if ! try_download "$MANIFEST_URL" "$TARGET_MANIFEST"; then
             MANIFEST_URL=""
             case "$PACKAGE_URL" in
                 http://*|https://*)
                     PACKAGE_LOCAL="$WORK_DIR/package.zip"
-                    download "$PACKAGE_URL" "$PACKAGE_LOCAL" || die "下载完整服务端包失败"
+                    download "$PACKAGE_URL" "$PACKAGE_LOCAL" || die "下载完整更新包失败"
                     ;;
                 *)
                     PACKAGE_LOCAL="$PACKAGE_URL"
