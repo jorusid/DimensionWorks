@@ -79,89 +79,91 @@ download_once() {
     fi
 }
 
+download_resume() {
+    local url="$1" destination="$2"
+    printf '[下载] 从已有部分文件继续：%s\\n' "$url" >&2
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --location --progress-bar --show-error --connect-timeout 10 --max-time 120 --continue-at - --output "$destination" "$url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget --timeout=120 --tries=1 --continue --output-document="$destination" "$url"
+    else
+        return 127
+    fi
+}
+
 try_download() {
-    local url="$1" destination="$2" candidate elapsed remaining attempts_left slice index=0
-    local start_seconds="$SECONDS"
-    local -a candidates=("$url")
-    # Only GitHub Release assets use mirrors. Every source shares one 120s first-pass budget.
+    local url="$1" destination="$2" candidate elapsed remaining attempts_left slice index=0 size choice local_path
+    local start_seconds="$SECONDS" best_index=0 best_size=-1
+    local -a candidates=("$url") partials=() sizes=()
     case "$url" in
-        https://github.com/*/releases/download/*)
-            candidates+=("https://ghproxy.net/$url" "https://gh-proxy.com/$url")
-            ;;
+        https://github.com/*/releases/download/*) candidates+=("https://ghproxy.net/$url" "https://gh-proxy.com/$url") ;;
     esac
-    for candidate in "${candidates[@]}"; do
+    for index in "${!candidates[@]}"; do
+        candidate="${candidates[$index]}"
+        partials[$index]="${destination}.source${index}.part"
         elapsed=$((SECONDS - start_seconds))
         remaining=$((120 - elapsed))
-        if [[ "$remaining" -le 0 ]]; then
-            printf '[下载] 本资源首轮总超时 120 秒，进入测速回退。\n' >&2
-            break
-        fi
+        if [[ "$remaining" -le 0 ]]; then printf '[下载] 首轮总预算 120 秒已用完。\\n' >&2; break; fi
         attempts_left=$(("${#candidates[@]}" - index))
         slice=$((remaining / attempts_left))
         [[ "$slice" -ge 1 ]] || slice=1
-        printf '[下载] 来源 %d/%d：%s\n' "$((index + 1))" "${#candidates[@]}" "$candidate" >&2
-        if download_once "$candidate" "$destination" "$slice"; then
+        printf '[下载] 来源 %d/%d：%s\\n' "$((index + 1))" "${#candidates[@]}" "$candidate" >&2
+        if download_once "$candidate" "${partials[$index]}" "$slice"; then
+            mv -f -- "${partials[$index]}" "$destination"
+            rm -f -- "${partials[@]}"
             return 0
         fi
-        printf '[下载] 当前源失败/超时，切换下一个来源。\n' >&2
-        rm -f -- "$destination"
-        index=$((index + 1))
+        size=0
+        [[ -f "${partials[$index]}" ]] && size=$(wc -c < "${partials[$index]}" | tr -d ' ')
+        sizes[$index]="$size"
+        printf '[下载] 来源失败，保留部分文件：%s 字节。\\n' "$size" >&2
     done
-
-    # Only retry the complete package persistently; manifest/delta failures must fall through.
-    case "$url" in *-delta.zip|*-update-manifest.tsv) return 1 ;; esac
-    [[ "${#candidates[@]}" -gt 1 ]] || return 1
-
-    # ICMP ping is often blocked and does not measure HTTPS reachability.
-    # Probe each source's HTTPS endpoint 3 times, 5 seconds apart.
-    local probe_url probe_time total count average best_average=999999 best_index=0
-    local i
-    for i in "${!candidates[@]}"; do
-        case "$i" in
-            0) probe_url="https://github.com" ;;
-            1) probe_url="https://ghproxy.net" ;;
-            2) probe_url="https://gh-proxy.com" ;;
-        esac
-        total=0
-        count=0
-        printf '[测速] 测试来源 %d/3：%s（3 次，间隔 5 秒）\n' "$((i + 1))" "$probe_url" >&2
-        for probe in 1 2 3; do
-            probe_time="$(curl --location --silent --show-error --connect-timeout 5 --max-time 10 \
-                --output /dev/null --write-out '%{time_total}' --head "$probe_url" 2>/dev/null)" || probe_time=""
-            if [[ "$probe_time" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-                total="$(awk -v a="$total" -v b="$probe_time" 'BEGIN { printf "%.6f", a+b }')"
-                count=$((count + 1))
-            fi
-            [[ "$probe" -eq 3 ]] || sleep 5
-        done
-        if [[ "$count" -gt 0 ]]; then
-            average="$(awk -v a="$total" -v n="$count" 'BEGIN { printf "%.6f", a/n }')"
-            printf '[测速] %s 平均 HTTPS 响应时间：%s 秒（%d/3 次成功）\n' "$probe_url" "$average" "$count" >&2
-            if awk -v a="$average" -v b="$best_average" 'BEGIN { exit !(a < b) }'; then
-                best_average="$average"
-                best_index="$i"
-            fi
-        else
-            printf '[测速] %s 三次均失败，跳过。\n' "$probe_url" >&2
-        fi
+    case "$url" in *-delta.zip|*-update-manifest.tsv) rm -f -- "${partials[@]}"; return 1 ;; esac
+    [[ "${#candidates[@]}" -gt 1 ]] || { rm -f -- "${partials[@]}"; return 1; }
+    best_index=0
+    best_size=-1
+    for index in "${!candidates[@]}"; do
+        size="${sizes[$index]:-0}"
+        if [[ "$size" -gt "$best_size" ]]; then best_size="$size"; best_index="$index"; fi
     done
-
-    candidate="${candidates[$best_index]}"
-    printf '[下载] 测速回退选择来源：%s；后续固定使用该源，直至下载成功。\n' "$candidate" >&2
+    printf '\\n所有下载源均失败。\\n'
+    printf '本次需要的完整更新包：%s\\n' "${url##*/}"
+    printf '请下载该文件并上传到实例目录，或输入服务器/客户端上已有文件的绝对路径。\\n'
+    printf '1) 使用已下载字节数最多的来源：%s（已下载 %s 字节），尝试续传\\n' "${candidates[$best_index]}" "$best_size"
+    printf '2) 手动指定已上传的完整更新包路径\\n'
     while true; do
-        rm -f -- "$destination"
-        if download_once "$candidate" "$destination" 120; then
-            return 0
-        fi
-        rm -f -- "$destination"
-        printf '[下载] 选定来源暂时失败，5 秒后继续重试同一来源。按 Ctrl+C 可中止。\n' >&2
-        sleep 5
+        read -r -p '请输入 1 或 2：' choice || die "无法读取输入，更新已中止"
+        case "$choice" in
+            1)
+                candidate="${candidates[$best_index]}"
+                [[ -f "${partials[$best_index]}" ]] || : > "${partials[$best_index]}"
+                while true; do
+                    if download_resume "$candidate" "${partials[$best_index]}"; then
+                        mv -f -- "${partials[$best_index]}" "$destination"
+                        rm -f -- "${partials[@]}"
+                        return 0
+                    fi
+                    printf '[下载] 续传失败，5 秒后重试同一来源；按 Ctrl+C 可中止。\\n' >&2
+                    sleep 5
+                done
+                ;;
+            2)
+                read -r -p '请输入完整更新包在本机的绝对路径：' local_path || die "无法读取文件路径"
+                if [[ -f "$local_path" && -r "$local_path" ]]; then
+                    cp -- "$local_path" "$destination" || die "无法复制手动提供的更新包"
+                    rm -f -- "${partials[@]}"
+                    return 0
+                fi
+                printf '文件不存在或不可读：%s\\n请重新输入。\\n' "$local_path" >&2
+                ;;
+            *) printf '输入无效，请输入 1 或 2。\\n' >&2 ;;
+        esac
     done
 }
 
 download() {
     local url="$1" destination="$2"
-    try_download "$url" "$destination" || die "所有下载源均失败：$url"
+    try_download "$url" "$destination" || die "下载失败：$url"
 }
 progress_step() {
     local label="$1"
