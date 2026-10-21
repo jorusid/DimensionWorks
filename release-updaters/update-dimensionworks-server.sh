@@ -108,7 +108,8 @@ try_download() {
         index=$((index + 1))
     done
 
-    # Non-Release URLs have no known mirror mapping.
+    # Only retry the complete package persistently; manifest/delta failures must fall through.
+    case "$url" in *-delta.zip|*-update-manifest.tsv) return 1 ;; esac
     [[ "${#candidates[@]}" -gt 1 ]] || return 1
 
     # ICMP ping is often blocked and does not measure HTTPS reachability.
@@ -156,7 +157,9 @@ try_download() {
         printf '[下载] 选定来源暂时失败，5 秒后继续重试同一来源。按 Ctrl+C 可中止。\n' >&2
         sleep 5
     done
-}download() {
+}
+
+download() {
     local url="$1" destination="$2"
     try_download "$url" "$destination" || die "所有下载源均失败：$url"
 }
