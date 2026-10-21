@@ -3,6 +3,8 @@ name: Release DimensionWorks
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     paths:
       - 'release-updaters/**'
 
@@ -10,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: dimensionworks-release
+  group: dimensionworks-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

@@ -153,6 +153,7 @@ try_download() {
     done
     printf '\n所有下载源均失败。\n'
     printf '本次需要的完整更新包：%s\n' "${url##*/}"
+    printf '已自动搜索实例根目录、updates/ 和 %s/，未找到可用的同名文件。\n' "$UPDATE_DIR"
     printf '请下载该文件并上传到实例目录，或输入服务器/客户端上已有文件的绝对路径。\n'
     printf '1) 使用已下载字节数最多的来源：%s（已下载 %s 字节），尝试续传\n' "${candidates[$best_index]}" "$best_size"
     printf '2) 手动指定已上传的完整更新包路径\n'
