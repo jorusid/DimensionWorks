@@ -63,6 +63,8 @@ jobs:
               baseline = max(baseline, pack_version.PackVersion.parse(latest[1:]))
           Path("VERSION").write_text(f"{baseline}\n", encoding="utf-8")
           target = baseline.next_patch()
+          # Both client and server packages must embed the exact release version.
+          Path("VERSION").write_text(f"{target}\\n", encoding="utf-8")
           print(target)
           PY
           )"
@@ -190,6 +192,11 @@ jobs:
           done
           unzip -t "dist/DimensionWorks-${PACK_VERSION}.mrpack"
           unzip -t "dist/DimensionWorks-Server-${PACK_VERSION}.zip"
+          client_version="$(unzip -p "dist/DimensionWorks-${PACK_VERSION}.mrpack" overrides/VERSION | tr -d '\r\n')"
+          server_version="$(unzip -p "dist/DimensionWorks-Server-${PACK_VERSION}.zip" VERSION | tr -d '\r\n')"
+          [[ "$client_version" == "$PACK_VERSION" ]] || { echo "Client VERSION mismatch: $client_version != $PACK_VERSION" >&2; exit 1; }
+          [[ "$server_version" == "$PACK_VERSION" ]] || { echo "Server VERSION mismatch: $server_version != $PACK_VERSION" >&2; exit 1; }
+          echo "Client and server VERSION verified: $PACK_VERSION"
           if [[ "$(wc -c < "dist/DimensionWorks-${PACK_VERSION}-delta.zip")" -gt 22 ]]; then
             unzip -t "dist/DimensionWorks-${PACK_VERSION}-delta.zip"
           fi
