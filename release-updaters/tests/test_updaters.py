@@ -661,7 +661,8 @@ exit 28
                 self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
                 self.assertIn("所有下载源均失败", result.stdout)
                 self.assertIn("2) 手动指定已上传的完整更新包路径", result.stdout)
-                self.assertIn("DimensionWorks-0.0.2", result.stdout)
+                expected_name = "DimensionWorks-0.0.2" if kind == "client" else "DimensionWorks-Server-0.0.2"
+                self.assertIn(expected_name, result.stdout)
                 if kind == "client":
                     self.assertEqual((instance / "config/recovery.cfg").read_bytes(), b"recovered")
                 else:
