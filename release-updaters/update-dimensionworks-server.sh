@@ -143,7 +143,16 @@ try_download() {
                         rm -f -- "${partials[@]}"
                         return 0
                     fi
-                    printf '[下载] 续传失败，5 秒后重试同一来源；按 Ctrl+C 可中止。\n' >&2
+                    # Some mirrors ignore HTTP Range. Retry from zero on the same chosen source
+                    # instead of looping forever on an unsupported resume request.
+                    if download_once "$candidate" "${partials[$best_index]}" 120; then
+                        mv -f -- "${partials[$best_index]}" "$destination"
+                        rm -f -- "${partials[@]}"
+                        return 0
+                    fi
+                    size=0
+                    [[ -f "${partials[$best_index]}" ]] && size=$(wc -c < "${partials[$best_index]}" | tr -d ' ')
+                    printf '[下载] 续传/重下失败，当前源已保留 %s 字节；5 秒后重试同一来源。按 Ctrl+C 可中止。\n' "$size" >&2
                     sleep 5
                 done
                 ;;
