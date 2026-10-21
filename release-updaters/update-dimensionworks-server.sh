@@ -286,8 +286,14 @@ zip_is_safe() {
 
 try_delta() {
     local target_base="$1" delta_url delta_zip delta_entries delta_root action path algorithm value source
-    [[ -n "$MANIFEST_URL" ]] || return 1
-    [[ -n "$OLD_VERSION" && "v$OLD_VERSION" == "$target_base" ]] || return 1
+    if [[ -z "$MANIFEST_URL" ]]; then
+        printf '[差量] 跳过：目标更新清单 URL 不可用。\\n' >&2
+        return 1
+    fi
+    if [[ -z "$OLD_VERSION" || "v$OLD_VERSION" != "$target_base" ]]; then
+        printf '[差量] 跳过：当前版本状态与差量包基准不匹配（当前=%s，目标基准=%s）。\\n' "${OLD_VERSION:-未知}" "$target_base" >&2
+        return 1
+    fi
     case "$PACKAGE_URL" in
         *.zip) delta_url="${PACKAGE_URL%.zip}-delta.zip" ;;
         *) return 1 ;;
@@ -295,11 +301,20 @@ try_delta() {
     delta_zip="$WORK_DIR/delta.zip"
     delta_entries="$WORK_DIR/delta.entries"
     delta_root="$WORK_DIR/delta"
-    printf '差量下载 %s\n' "$delta_url" >&2
-    try_download "$delta_url" "$delta_zip" || return 1
-    zip_is_safe "$delta_zip" "$delta_entries" || return 1
-    mkdir "$delta_root" 2>/dev/null || return 1
-    unzip -q "$delta_zip" -d "$delta_root" >/dev/null 2>&1 || return 1
+    printf '差量下载 %s\\n' "$delta_url" >&2
+    if ! try_download "$delta_url" "$delta_zip"; then
+        printf '[差量校验] 差量包下载失败。\\n' >&2
+        return 1
+    fi
+    if ! zip_is_safe "$delta_zip" "$delta_entries"; then
+        printf '[差量校验] 差量包未通过 ZIP 安全/完整性检查。\\n' >&2
+        return 1
+    fi
+    mkdir "$delta_root" 2>/dev/null || { printf '[差量校验] 无法创建差量解压目录。\\n' >&2; return 1; }
+    if ! unzip -q "$delta_zip" -d "$delta_root" >/dev/null 2>&1; then
+        printf '[差量校验] 差量包解压失败。\\n' >&2
+        return 1
+    fi
     while IFS=$'\t' read -r action path algorithm value source; do
         [[ "$action" == archive ]] || return 1
         if is_preserved_server "$path" && [[ -e "$ROOT_DIR/$path" ]]; then
@@ -309,8 +324,14 @@ try_delta() {
             [[ "$(sha_file 256 "$ROOT_DIR/$path")" == "$value" ]]; then
             continue
         fi
-        [[ -f "$delta_root/$source" && ! -L "$delta_root/$source" ]] || return 1
-        [[ "$(sha_file 256 "$delta_root/$source")" == "$value" ]] || return 1
+        if [[ ! -f "$delta_root/$source" || -L "$delta_root/$source" ]]; then
+            printf '[差量校验] 本地文件与目标版本不同，但差量包不包含：%s（源：%s）。需要完整包恢复该文件。\\n' "$path" "$source" >&2
+            return 1
+        fi
+        if [[ "$(sha_file 256 "$delta_root/$source")" != "$value" ]]; then
+            printf '[差量校验] 差量包文件摘要与目标清单不符：%s（源：%s）。\\n' "$path" "$source" >&2
+            return 1
+        fi
     done < <(awk -F '\t' 'NR > 6' "$TARGET_MANIFEST")
     PACKAGE_ROOT="$delta_root"
     return 0
@@ -761,6 +782,7 @@ main() {
     printf '[进度] 检查 %d 个受管文件\n' "$PROGRESS_TOTAL" >&2
 
     if ! try_delta "$target_base"; then
+        printf '[差量] 无法覆盖本地所有需要修复的受管文件，安全回退到完整服务端包。\\n' >&2
         PACKAGE_ROOT="$WORK_DIR/package"
         if [[ ! -f "$PACKAGE_LOCAL" ]]; then
             case "$PACKAGE_URL" in

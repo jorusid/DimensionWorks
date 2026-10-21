@@ -704,6 +704,9 @@ main() {
 
     local delta_root="$WORK_DIR/delta"
     local delta_ready=0
+    if [[ "$archive_needed" -eq 1 && ( -z "$MANIFEST_URL" || -z "$OLD_VERSION" || "v$OLD_VERSION" != "$target_base" ) ]]; then
+        printf '[差量] 跳过：当前版本状态与差量包基准不匹配（当前=%s，目标基准=%s）。\\n' "${OLD_VERSION:-未知}" "$target_base" >&2
+    fi
     if [[ "$archive_needed" -eq 1 && -n "$MANIFEST_URL" && -n "$OLD_VERSION" && "v$OLD_VERSION" == "$target_base" ]]; then
         local delta_url="${PACKAGE_URL%.mrpack}-delta.zip"
         if try_download "$delta_url" "$WORK_DIR/delta.zip"; then
@@ -718,8 +721,13 @@ main() {
                         if [[ -f "$ROOT_DIR/$path" ]] && [[ "$(sha_file 256 "$ROOT_DIR/$path")" == "$value" ]]; then
                             continue
                         fi
-                        if [[ ! -f "$delta_root/$source" ]] ||
-                           [[ "$(sha_file 256 "$delta_root/$source")" != "$value" ]]; then
+                        if [[ ! -f "$delta_root/$source" ]]; then
+                            printf '[差量校验] 本地文件与目标版本不同，但差量包不包含：%s（源：%s）。需要完整包恢复该文件。\\n' "$path" "$source" >&2
+                            delta_ready=0
+                            break
+                        fi
+                        if [[ "$(sha_file 256 "$delta_root/$source")" != "$value" ]]; then
+                            printf '[差量校验] 差量包文件摘要与目标清单不符：%s（源：%s）。\\n' "$path" "$source" >&2
                             delta_ready=0
                             break
                         fi
@@ -732,6 +740,7 @@ main() {
         fi
     fi
     if [[ "$archive_needed" -eq 1 && "$delta_ready" -eq 0 ]]; then
+        printf '[差量] 无法覆盖本地所有需要修复的受管文件，安全回退到完整客户端包。\\n' >&2
         if [[ ! -f "$PACKAGE_LOCAL" ]]; then
             case "$PACKAGE_URL" in
                 http://*|https://*)
