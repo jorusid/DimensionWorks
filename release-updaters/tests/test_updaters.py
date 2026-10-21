@@ -110,6 +110,10 @@ class UpdaterScriptContractTest(unittest.TestCase):
                 self.assertIn("-NoProfile", text)
                 self.assertIn("-ExecutionPolicy", text)
                 self.assertIn("$ProgressPreference = 'Continue'", text)
+                self.assertIn("previous.Digest -eq $entry.Digest", text)
+                self.assertIn("VERSION write-back verification failed", text)
+                if name == "update-dimensionworks-server.bat":
+                    self.assertNotIn("$Script:CurrentState.Base -eq $manifest.Base", text)
 
 
 class FixtureFactory:
@@ -323,14 +327,15 @@ class ShellClientFixtureTest(unittest.TestCase):
     def test_release_url_uses_client_delta_without_full_package(self) -> None:
         first = self.fixture.write_client_package(
             version="0.0.8",
-            files={"config/value.cfg": b"old"},
+            files={"config/value.cfg": b"old", "config/custom.cfg": b"original"},
         )
         result = self.run_script(first)
         self.assertEqual(result.returncode, 0, result.stderr)
+        (self.instance / "config" / "custom.cfg").write_bytes(b"user custom")
 
         second = self.fixture.write_client_package(
             version="0.0.9",
-            files={"config/value.cfg": b"new"},
+            files={"config/value.cfg": b"new", "config/custom.cfg": b"original"},
             base="v0.0.8",
         )
         delta = self.temp / "DimensionWorks-0.0.9-delta.zip"
@@ -366,6 +371,8 @@ class ShellClientFixtureTest(unittest.TestCase):
             thread.join(timeout=2)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.instance / "config" / "value.cfg").read_bytes(), b"new")
+        self.assertEqual((self.instance / "config" / "custom.cfg").read_bytes(), b"user custom")
+        self.assertEqual((self.instance / "VERSION").read_text(), "0.0.9\n")
         self.assertIn("/" + manifest.name, requested)
         self.assertIn("/" + delta.name, requested)
         self.assertNotIn("/" + second.name, requested)
@@ -384,7 +391,7 @@ class ShellServerFixtureTest(unittest.TestCase):
             )
             first = fixture.write_server_package(
                 version="0.0.8",
-                files={"config/value.cfg": b"old"},
+                files={"config/value.cfg": b"old", "config/custom.cfg": b"original"},
             )
             result = subprocess.run(
                 ["bash", str(instance / "update-dimensionworks-server.sh"), "--package", str(first)],
@@ -394,10 +401,11 @@ class ShellServerFixtureTest(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
+            (instance / "config" / "custom.cfg").write_bytes(b"user custom")
 
             second = fixture.write_server_package(
                 version="0.0.9",
-                files={"config/value.cfg": b"new"},
+                files={"config/value.cfg": b"new", "config/custom.cfg": b"original"},
                 base="v0.0.8",
             )
             delta = Path(temp) / "DimensionWorks-Server-0.0.9-delta.zip"
@@ -433,6 +441,8 @@ class ShellServerFixtureTest(unittest.TestCase):
                 thread.join(timeout=2)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual((instance / "config" / "value.cfg").read_bytes(), b"new")
+            self.assertEqual((instance / "config" / "custom.cfg").read_bytes(), b"user custom")
+            self.assertEqual((instance / "VERSION").read_text(), "0.0.9\n")
             self.assertIn("/" + manifest.name, requested)
             self.assertIn("/" + delta.name, requested)
             self.assertNotIn("/" + second.name, requested)
