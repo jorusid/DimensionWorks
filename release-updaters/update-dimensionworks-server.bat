@@ -361,6 +361,10 @@ exit /b %DW_EXIT%
 ::PS         $exists = Test-SafeExisting $target
 ::PS         if ($exists -and [IO.Directory]::Exists($target)) { Fail ('target is a directory: ' + $entry.Path) }
 ::PS         if ($exists -and (Get-Digest $target $entry.Algorithm) -eq $entry.Digest) { continue }
+::PS         if ($entry.Action -eq 'archive' -and $Script:CurrentState) {
+::PS             $previous = $Script:CurrentState.Entries | Where-Object { $_.Path -eq $entry.Path } | Select-Object -First 1
+::PS             if ($previous -and $previous.Digest -eq $entry.Digest) { continue }
+::PS         }
 ::PS         $result.Add($entry)
 ::PS     }
 ::PS     Write-Progress -Activity '检查受管文件' -Completed
@@ -398,7 +402,11 @@ exit /b %DW_EXIT%
 ::PS          if ($wanted.ContainsKey($entry.Path.ToLowerInvariant())) { continue }
 ::PS          $target = Get-Target $entry.Path
 ::PS          if ((Get-Digest $target $entry.Algorithm) -ne $entry.Digest) {
-::PS              Fail ('package lacks required unchanged file: ' + $entry.Path)
+::PS              if ($Script:CurrentState) {
+::PS                  $previous = $Script:CurrentState.Entries | Where-Object { $_.Path -eq $entry.Path } | Select-Object -First 1
+::PS                  if ($previous -and $previous.Digest -eq $entry.Digest) { continue }
+::PS              }
+::PS              Fail ('package lacks required changed file: ' + $entry.Path)
 ::PS          }
 ::PS      }
 ::PS  }
@@ -727,8 +735,7 @@ exit /b %DW_EXIT%
 ::PS              Test-Staged $manifest $selected
 ::PS          } else {
 ::PS              $compatible = $Script:CurrentState -and
-::PS                  $Script:CurrentState.Release -eq $manifest.Base -and
-::PS                  $Script:CurrentState.Base -eq $manifest.Base
+::PS                  $Script:CurrentState.Release -eq $manifest.Base
 ::PS              if ($compatible -and $selected.Count -gt 0 -and $releaseTag -and (-not $package)) {
 ::PS                  try {
 ::PS                      $deltaPath = Join-Path $Work 'server-delta.zip'
@@ -773,6 +780,9 @@ exit /b %DW_EXIT%
 ::PS             Verify-Manifest $manifest
 ::PS             $versionBytes = [Text.Encoding]::UTF8.GetBytes($manifest.Version + "`n")
 ::PS             $Script:VersionRecord = Write-Metadata (Join-Path $Root 'VERSION') $versionBytes 'version.bak'
+::PS             if ([IO.File]::ReadAllText((Join-Path $Root 'VERSION')).Trim() -ne $manifest.Version) {
+::PS                 Fail ('VERSION write-back verification failed; expected ' + $manifest.Version)
+::PS             }
 ::PS             $Script:StateRecord = Write-Metadata (Join-Path $Root $StateName) $manifest.Bytes 'state.bak'
 ::PS         } catch {
 ::PS             Rollback

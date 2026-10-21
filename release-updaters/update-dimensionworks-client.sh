@@ -28,6 +28,7 @@ PACKAGE_LOCAL=""
 OLD_VERSION=""
 LOCK_HELD=0
     TX_ACTIVE=0
+DELTA_USED=0
 ROOT_DIR=""
 PROGRESS_TOTAL=0
 PROGRESS_DONE=0
@@ -257,6 +258,12 @@ validate_zip() {
     if unzip -Z -l "$archive" 2>/dev/null | awk 'substr($0, 1, 1) == "l" { found=1 } END { exit !found }'; then
         die "压缩包不得包含符号链接：$archive"
     fi
+}
+
+state_digest_for_path() {
+    local state_file="$1" wanted_path="$2"
+    [[ -f "$state_file" ]] || return 0
+    awk -F '\t' -v wanted="$wanted_path" 'NR > 6 && $2 == wanted { print $4; exit }' "$state_file"
 }
 
 manifest_is_valid() {
@@ -697,6 +704,9 @@ main() {
         [[ "$action" == "archive" ]] || continue
         if is_preserved_client "$path"; then continue; fi
         if [[ ! -f "$ROOT_DIR/$path" ]] || [[ "$(sha_file 256 "$ROOT_DIR/$path")" != "$value" ]]; then
+            local old_digest
+            old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
+            [[ "$old_digest" == "$value" ]] && continue
             archive_needed=1
             break
         fi
@@ -721,6 +731,9 @@ main() {
                         if [[ -f "$ROOT_DIR/$path" ]] && [[ "$(sha_file 256 "$ROOT_DIR/$path")" == "$value" ]]; then
                             continue
                         fi
+                        local old_digest
+                        old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
+                        [[ "$old_digest" == "$value" ]] && continue
                         if [[ ! -f "$delta_root/$source" ]]; then
                             printf '[差量校验] 本地文件与目标版本不同，但差量包不包含：%s（源：%s）。需要完整包恢复该文件。\\n' "$path" "$source" >&2
                             delta_ready=0
@@ -734,6 +747,7 @@ main() {
                     done < <(awk -F '\t' 'NR > 6' "$TARGET_MANIFEST")
                     if [[ "$delta_ready" -eq 1 ]]; then
                         PACKAGE_ROOT="$delta_root"
+                        DELTA_USED=1
                     fi
                 fi
             fi
@@ -781,6 +795,9 @@ main() {
                    [[ "$(sha_file 256 "$ROOT_DIR/$path")" == "$value" ]]; then
                     continue
                 fi
+                local old_digest
+                old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
+                [[ "$old_digest" == "$value" ]] && continue
                 local archive_source="$PACKAGE_ROOT/$source"
                 [[ -f "$archive_source" && ! -L "$archive_source" ]] ||
                     die "完整包缺少受管文件：$source"
@@ -850,6 +867,7 @@ main() {
         fi
         mv -f "$version_tmp" "$ROOT_DIR/VERSION"
     fi
+    [[ "$(tr -d '\r\n' < "$ROOT_DIR/VERSION")" == "$TARGET_VERSION" ]] || die "版本号写入后校验失败：$ROOT_DIR/VERSION"
 
     local state_tmp="$UPDATE_DIR/state.tsv.tmp.$$"
     if [[ "$KIND" == "client" ]]; then
