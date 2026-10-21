@@ -293,8 +293,53 @@ cleanup() {
         rm -rf -- "$WORK_DIR"
     fi
     if [[ "$LOCK_HELD" -eq 1 ]]; then
+        rm -f -- "$LOCK_DIR/pid"
         rmdir -- "$LOCK_DIR" 2>/dev/null || true
     fi
+}
+
+process_matches_updater() {
+    local pid="$1" command_line
+    [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+    kill -0 "$pid" 2>/dev/null || return 1
+    command_line="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+    [[ "$command_line" == *"$SCRIPT_NAME"* ]]
+}
+
+lock_has_live_updater() {
+    local owner_pid="" pid command_line
+    if [[ -r "$LOCK_DIR/pid" ]]; then
+        IFS= read -r owner_pid < "$LOCK_DIR/pid" || true
+        if process_matches_updater "$owner_pid"; then
+            return 0
+        fi
+    fi
+
+    # Legacy locks have no PID file. Check for another instance of this updater
+    # before removing the lock, so an old but active updater is never interrupted.
+    while read -r pid command_line; do
+        [[ "$pid" =~ ^[0-9]+$ && "$pid" != "$" ]] || continue
+        [[ "$command_line" == *"$SCRIPT_NAME"* ]] || continue
+        return 0
+    done < <(ps -axo pid=,command= 2>/dev/null)
+    return 1
+}
+
+acquire_lock() {
+    mkdir -p "$UPDATE_DIR" || die "无法创建更新目录"
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        if lock_has_live_updater; then
+            die "检测到另一个更新任务仍在运行，拒绝删除锁文件"
+        fi
+        printf '[锁检查] 未发现仍在运行的上次更新进程，清理残留锁。\n' >&2
+        rm -rf -- "$LOCK_DIR" || die "无法清理残留锁：$LOCK_DIR"
+        mkdir "$LOCK_DIR" 2>/dev/null || die "另一个更新任务刚刚取得锁，请稍后重试"
+    fi
+    printf '%s\n' "$" > "$LOCK_DIR/pid" || {
+        rm -rf -- "$LOCK_DIR"
+        die "无法写入更新锁 PID"
+    }
+    LOCK_HELD=1
 }
 
 on_exit() {
@@ -477,9 +522,7 @@ main() {
     ROOT_DIR="$(cd "$(dirname "$0")" && pwd -P)" || die "无法确定实例根目录"
     cd "$ROOT_DIR" || die "无法进入实例根目录"
     [[ -d "$ROOT_DIR" ]] || die "实例根目录不存在"
-    mkdir -p "$UPDATE_DIR" || die "无法创建更新目录"
-    mkdir "$LOCK_DIR" 2>/dev/null || die "已有更新任务正在运行"
-    LOCK_HELD=1
+    acquire_lock
     WORK_DIR="$UPDATE_DIR/work.$$"
     mkdir "$WORK_DIR" || die "无法创建临时目录"
     PACKAGE_ROOT="$WORK_DIR/package"
