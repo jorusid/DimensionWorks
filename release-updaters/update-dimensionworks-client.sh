@@ -66,9 +66,9 @@ sha_file() {
 download_once() {
     local url="$1" destination="$2"
     rm -f -- "$destination"
-    printf '下载（单次最长 120 秒）%s\\n' "$url" >&2
+    printf '下载（单次最长 120 秒）%s\n' "$url" >&2
     if command -v curl >/dev/null 2>&1; then
-        curl --fail --location --progress-bar --show-error \\
+        curl --fail --location --progress-bar --show-error \
             --connect-timeout 15 --max-time 120 --output "$destination" "$url"
     elif command -v wget >/dev/null 2>&1; then
         wget --timeout=120 --tries=1 --progress=bar:force --output-document="$destination" "$url"
@@ -90,11 +90,11 @@ try_download() {
             ;;
     esac
     for candidate in "${candidates[@]}"; do
-        printf '[下载] 尝试：%s\\n' "$candidate" >&2
+        printf '[下载] 尝试：%s\n' "$candidate" >&2
         if download_once "$candidate" "$destination"; then
             return 0
         fi
-        printf '[下载] 失败或超过 120 秒，尝试下一个来源。\\n' >&2
+        printf '[下载] 失败或超过 120 秒，尝试下一个来源。\n' >&2
         rm -f -- "$destination"
     done
     return 1
@@ -104,7 +104,6 @@ download() {
     local url="$1" destination="$2"
     try_download "$url" "$destination" || die "所有下载源均失败：$url"
 }
-
 progress_step() {
     local label="$1"
     PROGRESS_DONE=$((PROGRESS_DONE + 1))
