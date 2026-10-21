@@ -288,6 +288,11 @@ def build_pack(
     manifest_output: Path | None = None,
     base_release: str | None = None,
 ) -> str:
+    recorded_version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    if recorded_version != version:
+        raise ValueError(
+            f"VERSION mismatch before packaging: VERSION={recorded_version}, target={version}"
+        )
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     shader_manifest = json.loads(SHADER_MANIFEST.read_text(encoding="utf-8"))
     index_files: list[dict[str, Any]] = []
