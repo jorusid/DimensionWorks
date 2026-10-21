@@ -2,6 +2,9 @@ name: Release DimensionWorks
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'release-updaters/**'
 
 permissions:
   contents: write
@@ -172,6 +175,12 @@ jobs:
           PACK_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
+          for script in dist/update-dimensionworks-client.sh dist/update-dimensionworks-server.sh; do
+            [[ -s "$script" ]] || { echo "Missing or empty updater: $script" >&2; exit 1; }
+            IFS= read -r first_line < "$script"
+            [[ "$first_line" == "#!/usr/bin/env bash" ]] || { echo "Invalid updater header: $script" >&2; exit 1; }
+            bash -n "$script"
+          done
           unzip -t "dist/DimensionWorks-${PACK_VERSION}.mrpack"
           unzip -t "dist/DimensionWorks-Server-${PACK_VERSION}.zip"
           if [[ "$(wc -c < "dist/DimensionWorks-${PACK_VERSION}-delta.zip")" -gt 22 ]]; then

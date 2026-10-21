@@ -459,10 +459,15 @@ resolve_sources() {
     if [[ -n "$RELEASE_ARG" ]]; then
         TARGET_RELEASE="$RELEASE_ARG"
     else
-        local latest
-        latest="$(download_to_stdout "https://api.github.com/repos/$REPO/releases/latest")" ||
-            die "无法查询 GitHub Latest Release"
+        local latest latest_url
+        latest="$(download_to_stdout "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null)" || latest=""
         TARGET_RELEASE="$(printf '%s' "$latest" | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
+        if [[ -z "$TARGET_RELEASE" ]]; then
+            # GitHub API may be blocked/reset by some server networks; fall back to the browser redirect.
+            latest_url="$(resolve_latest_release_url)" ||
+                die "无法查询 GitHub Latest Release（API 与网页入口均连接失败）；可使用 --release vX.Y.Z 指定版本"
+            TARGET_RELEASE="${latest_url##*/tag/}"
+        fi
         [[ -n "$TARGET_RELEASE" ]] || die "GitHub Latest Release 没有 tag_name"
     fi
     [[ "$TARGET_RELEASE" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Release 标签格式无效：$TARGET_RELEASE"
@@ -475,12 +480,19 @@ resolve_sources() {
 
 download_to_stdout() {
     if command -v curl >/dev/null 2>&1; then
-        curl --fail --location --silent --show-error --retry 3 "$1"
+        curl --fail --location --silent --show-error --retry 3 --connect-timeout 10 --max-time 45 "$1"
     elif command -v wget >/dev/null 2>&1; then
         wget -qO- "$1"
     else
         return 1
     fi
+}
+
+resolve_latest_release_url() {
+    command -v curl >/dev/null 2>&1 || return 1
+    curl --fail --location --silent --show-error --retry 2 \
+        --connect-timeout 10 --max-time 45 --output /dev/null --write-out '%{url_effective}' \
+        "https://github.com/$REPO/releases/latest"
 }
 
 stop_related_processes() {
