@@ -81,7 +81,7 @@ download_once() {
 
 download_resume() {
     local url="$1" destination="$2"
-    printf '[下载] 从已有部分文件继续：%s\\n' "$url" >&2
+    printf '[下载] 从已有部分文件继续：%s\n' "$url" >&2
     if command -v curl >/dev/null 2>&1; then
         curl --fail --location --progress-bar --show-error --connect-timeout 10 --max-time 120 --continue-at - --output "$destination" "$url"
     elif command -v wget >/dev/null 2>&1; then
@@ -103,11 +103,11 @@ try_download() {
         partials[$index]="${destination}.source${index}.part"
         elapsed=$((SECONDS - start_seconds))
         remaining=$((120 - elapsed))
-        if [[ "$remaining" -le 0 ]]; then printf '[下载] 首轮总预算 120 秒已用完。\\n' >&2; break; fi
+        if [[ "$remaining" -le 0 ]]; then printf '[下载] 首轮总预算 120 秒已用完。\n' >&2; break; fi
         attempts_left=$(("${#candidates[@]}" - index))
         slice=$((remaining / attempts_left))
         [[ "$slice" -ge 1 ]] || slice=1
-        printf '[下载] 来源 %d/%d：%s\\n' "$((index + 1))" "${#candidates[@]}" "$candidate" >&2
+        printf '[下载] 来源 %d/%d：%s\n' "$((index + 1))" "${#candidates[@]}" "$candidate" >&2
         if download_once "$candidate" "${partials[$index]}" "$slice"; then
             mv -f -- "${partials[$index]}" "$destination"
             rm -f -- "${partials[@]}"
@@ -116,7 +116,7 @@ try_download() {
         size=0
         [[ -f "${partials[$index]}" ]] && size=$(wc -c < "${partials[$index]}" | tr -d ' ')
         sizes[$index]="$size"
-        printf '[下载] 来源失败，保留部分文件：%s 字节。\\n' "$size" >&2
+        printf '[下载] 来源失败，保留部分文件：%s 字节。\n' "$size" >&2
     done
     case "$url" in *-delta.zip|*-update-manifest.tsv) rm -f -- "${partials[@]}"; return 1 ;; esac
     [[ "${#candidates[@]}" -gt 1 ]] || { rm -f -- "${partials[@]}"; return 1; }
@@ -126,11 +126,11 @@ try_download() {
         size="${sizes[$index]:-0}"
         if [[ "$size" -gt "$best_size" ]]; then best_size="$size"; best_index="$index"; fi
     done
-    printf '\\n所有下载源均失败。\\n'
-    printf '本次需要的完整更新包：%s\\n' "${url##*/}"
-    printf '请下载该文件并上传到实例目录，或输入服务器/客户端上已有文件的绝对路径。\\n'
-    printf '1) 使用已下载字节数最多的来源：%s（已下载 %s 字节），尝试续传\\n' "${candidates[$best_index]}" "$best_size"
-    printf '2) 手动指定已上传的完整更新包路径\\n'
+    printf '\n所有下载源均失败。\n'
+    printf '本次需要的完整更新包：%s\n' "${url##*/}"
+    printf '请下载该文件并上传到实例目录，或输入服务器/客户端上已有文件的绝对路径。\n'
+    printf '1) 使用已下载字节数最多的来源：%s（已下载 %s 字节），尝试续传\n' "${candidates[$best_index]}" "$best_size"
+    printf '2) 手动指定已上传的完整更新包路径\n'
     while true; do
         read -r -p '请输入 1 或 2：' choice || die "无法读取输入，更新已中止"
         case "$choice" in
@@ -143,7 +143,7 @@ try_download() {
                         rm -f -- "${partials[@]}"
                         return 0
                     fi
-                    printf '[下载] 续传失败，5 秒后重试同一来源；按 Ctrl+C 可中止。\\n' >&2
+                    printf '[下载] 续传失败，5 秒后重试同一来源；按 Ctrl+C 可中止。\n' >&2
                     sleep 5
                 done
                 ;;
@@ -154,9 +154,9 @@ try_download() {
                     rm -f -- "${partials[@]}"
                     return 0
                 fi
-                printf '文件不存在或不可读：%s\\n请重新输入。\\n' "$local_path" >&2
+                printf '文件不存在或不可读：%s\n请重新输入。\n' "$local_path" >&2
                 ;;
-            *) printf '输入无效，请输入 1 或 2。\\n' >&2 ;;
+            *) printf '输入无效，请输入 1 或 2。\n' >&2 ;;
         esac
     done
 }
