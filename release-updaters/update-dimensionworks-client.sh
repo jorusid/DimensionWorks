@@ -63,30 +63,46 @@ sha_file() {
     fi
 }
 
-download() {
+download_once() {
     local url="$1" destination="$2"
-    printf '下载 %s\n' "$url" >&2
+    rm -f -- "$destination"
+    printf '下载（单次最长 120 秒）%s\\n' "$url" >&2
     if command -v curl >/dev/null 2>&1; then
-        curl --fail --location --progress-bar --show-error --retry 3 --output "$destination" "$url" ||
-            die "下载失败：$url"
+        curl --fail --location --progress-bar --show-error \\
+            --connect-timeout 15 --max-time 120 --output "$destination" "$url"
     elif command -v wget >/dev/null 2>&1; then
-        wget --progress=bar:force --output-document="$destination" "$url" ||
-            die "下载失败：$url"
+        wget --timeout=120 --tries=1 --progress=bar:force --output-document="$destination" "$url"
     else
-        die "系统缺少 curl 或 wget"
+        return 127
     fi
 }
 
 try_download() {
+    local url="$1" destination="$2" candidate
+    local -a candidates=("$url")
+    # Only GitHub Release assets use third-party mirrors; arbitrary URLs remain untouched.
+    case "$url" in
+        https://github.com/*/releases/download/*)
+            candidates+=(
+                "https://ghproxy.net/$url"
+                "https://gh-proxy.com/$url"
+            )
+            ;;
+    esac
+    for candidate in "${candidates[@]}"; do
+        printf '[下载] 尝试：%s\\n' "$candidate" >&2
+        if download_once "$candidate" "$destination"; then
+            return 0
+        fi
+        printf '[下载] 失败或超过 120 秒，尝试下一个来源。\\n' >&2
+        rm -f -- "$destination"
+    done
+    return 1
+}
+
+download() {
     local url="$1" destination="$2"
-    printf '下载 %s\n' "$url" >&2
-    if command -v curl >/dev/null 2>&1; then
-        curl --fail --location --progress-bar --show-error --retry 2 --output "$destination" "$url"
-    elif command -v wget >/dev/null 2>&1; then
-        wget --progress=bar:force --output-document="$destination" "$url"
-    else
-        return 1
-    fi
+    try_download "$url" "$destination" || die "所有下载源均失败：$url"
 }
 
 progress_step() {
