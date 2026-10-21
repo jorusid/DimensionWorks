@@ -12,7 +12,6 @@ on:
       - 'scripts/package_mrpack.py'
       - 'scripts/package_server.py'
       - 'scripts/pack_hook.py'
-      - '.github/workflows/release-pack.yml'
 
 permissions:
   contents: write
@@ -280,7 +279,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin "${GITHUB_REF_NAME}"
-          git checkout -B "${GITHUB_REF_NAME}" "origin/${GITHUB_REF_NAME}"
+          git checkout --force -B "${GITHUB_REF_NAME}" "origin/${GITHUB_REF_NAME}"
           released_version="${TAG#v}"
           printf '%s\n' "${released_version}" > VERSION
           git add VERSION
