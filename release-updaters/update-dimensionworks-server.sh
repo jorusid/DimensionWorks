@@ -64,23 +64,26 @@ sha_file() {
 }
 
 download_once() {
-    local url="$1" destination="$2"
+    local url="$1" destination="$2" timeout_seconds="$3"
     rm -f -- "$destination"
-    printf '下载（单次最长 120 秒）%s\n' "$url" >&2
+    printf '[下载] 本资源总预算 120 秒；本源限时 %s 秒：%s\n' "$timeout_seconds" "$url" >&2
     if command -v curl >/dev/null 2>&1; then
         curl --fail --location --progress-bar --show-error \
-            --connect-timeout 15 --max-time 120 --output "$destination" "$url"
+            --connect-timeout 10 --max-time "$timeout_seconds" \
+            --output "$destination" "$url"
     elif command -v wget >/dev/null 2>&1; then
-        wget --timeout=120 --tries=1 --progress=bar:force --output-document="$destination" "$url"
+        wget --timeout="$timeout_seconds" --tries=1 --progress=bar:force \
+            --output-document="$destination" "$url"
     else
         return 127
     fi
 }
 
 try_download() {
-    local url="$1" destination="$2" candidate
+    local url="$1" destination="$2" candidate elapsed remaining attempts_left slice index=0
+    local start_seconds="$SECONDS"
     local -a candidates=("$url")
-    # Only GitHub Release assets use third-party mirrors; arbitrary URLs remain untouched.
+    # Keep all fallback attempts within one 120-second budget per resource.
     case "$url" in
         https://github.com/*/releases/download/*)
             candidates+=(
@@ -90,17 +93,26 @@ try_download() {
             ;;
     esac
     for candidate in "${candidates[@]}"; do
-        printf '[下载] 尝试：%s\n' "$candidate" >&2
-        if download_once "$candidate" "$destination"; then
+        elapsed=$((SECONDS - start_seconds))
+        remaining=$((120 - elapsed))
+        if [[ "$remaining" -le 0 ]]; then
+            printf '[下载] 本资源总超时 120 秒，停止继续等待：%s\n' "$url" >&2
+            break
+        fi
+        attempts_left=$(("${#candidates[@]}" - index))
+        # Divide the remaining budget among remaining sources (40s each for 3 sources).
+        slice=$((remaining / attempts_left))
+        [[ "$slice" -ge 1 ]] || slice=1
+        printf '[下载] 来源 %d/%d：%s\n' "$((index + 1))" "${#candidates[@]}" "$candidate" >&2
+        if download_once "$candidate" "$destination" "$slice"; then
             return 0
         fi
-        printf '[下载] 失败或超过 120 秒，尝试下一个来源。\n' >&2
+        printf '[下载] 当前源失败/超时，准备切换来源。\n' >&2
         rm -f -- "$destination"
+        index=$((index + 1))
     done
     return 1
-}
-
-download() {
+}download() {
     local url="$1" destination="$2"
     try_download "$url" "$destination" || die "所有下载源均失败：$url"
 }
@@ -611,8 +623,6 @@ main() {
     PACKAGE_ROOT="$WORK_DIR/package"
     TARGET_MANIFEST="$WORK_DIR/target.tsv"
     mkdir "$PACKAGE_ROOT"
-    stop_related_processes
-
     resolve_sources
     if [[ -n "$MANIFEST_URL" ]]; then
         if ! try_download "$MANIFEST_URL" "$TARGET_MANIFEST"; then
@@ -731,6 +741,7 @@ main() {
         return 0
     fi
 
+    stop_related_processes
     TX_ACTIVE=1
     if [[ -f "$WORK_DIR/needed" ]]; then
         while IFS=$'\t' read -r path staged; do
