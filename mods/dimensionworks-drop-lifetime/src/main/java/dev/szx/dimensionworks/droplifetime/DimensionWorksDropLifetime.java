@@ -41,17 +41,12 @@ public final class DimensionWorksDropLifetime {
             }
 
             Rarity rarity = stack.getRarity();
-            int rarityLevel = switch (rarity) {
-                case COMMON -> 1;
-                case UNCOMMON -> 2;
-                case RARE -> 3;
-                case EPIC -> 4;
+            int lifetimeSeconds = switch (rarity) {
+                case COMMON -> 25;
+                case UNCOMMON -> 50;
+                case RARE -> 75;
+                case EPIC -> MAX_LIFETIME_SECONDS;
             };
-
-            int lifetimeSeconds = Math.min(
-                    MAX_LIFETIME_SECONDS,
-                    BASE_LIFETIME_SECONDS * rarityLevel
-            );
             itemEntity.lifespan = lifetimeSeconds * TICKS_PER_SECOND;
         }
     }
