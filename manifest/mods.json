@@ -1398,6 +1398,16 @@
       "required": true,
       "environment": "both",
       "url": "https://github.com/szx-jn/DimensionWorks"
+    },
+    {
+      "id": "dimensionworks_drop_lifetime",
+      "name": "DimensionWorks Drop Lifetime",
+      "source": "in-repo",
+      "project_path": "mods/dimensionworks-drop-lifetime",
+      "version": "0.1.0",
+      "required": true,
+      "environment": "both",
+      "url": "https://github.com/szx-jn/DimensionWorks/tree/main/mods/dimensionworks-drop-lifetime"
     }
   ]
 }
