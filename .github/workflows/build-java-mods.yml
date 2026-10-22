@@ -24,6 +24,7 @@ jobs:
       matrix:
         module:
           - dimensionworks-cave-factory
+          - dimensionworks-drop-lifetime
           - dimensionworks-localization
           - dimensionworks-mek-stress
           - dimensionworks-rpm-limit
