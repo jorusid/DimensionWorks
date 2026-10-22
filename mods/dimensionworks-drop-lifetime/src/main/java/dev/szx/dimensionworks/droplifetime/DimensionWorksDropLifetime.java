@@ -11,7 +11,7 @@ import net.minecraftforge.fml.common.Mod;
 public final class DimensionWorksDropLifetime {
     public static final String MOD_ID = "dimensionworks_drop_lifetime";
 
-    private DimensionWorksDropLifetime() {
+    public DimensionWorksDropLifetime() {
     }
 
     @Mod.EventBusSubscriber(
