@@ -2,30 +2,28 @@
 setlocal EnableExtensions DisableDelayedExpansion
 set "DW_KIND=server"
 set "DW_SCRIPT_NAME=update-dimensionworks-server.bat"
-
-if defined DW_UPDATE_WRAPPER goto payload
 set "DW_SOURCE=%~f0"
-set "DW_COPY=%TEMP%\DimensionWorks-%DW_KIND%-%RANDOM%-%RANDOM%.bat"
-copy /y "%DW_SOURCE%" "%DW_COPY%" >nul || (
-    echo [ERROR] Cannot create the temporary updater wrapper.
-    exit /b 1
-)
-set "DW_UPDATE_WRAPPER=1"
-call "%DW_COPY%" %*
-set "DW_EXIT=%ERRORLEVEL%"
-del /f /q "%DW_COPY%" >nul 2>&1
-exit /b %DW_EXIT%
-
-:payload
 set "DW_PAYLOAD=%TEMP%\DimensionWorks-%DW_KIND%-%RANDOM%-%RANDOM%.ps1"
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$p='::PS '; $l=[IO.File]::ReadAllLines($env:DW_SOURCE,[Text.Encoding]::UTF8); $o=@($l | Where-Object { $_.StartsWith($p) } | ForEach-Object { $_.Substring($p.Length) }); [IO.File]::WriteAllLines($env:DW_PAYLOAD,$o,[Text.UTF8Encoding]::new($false))" || (
-    echo [ERROR] Cannot prepare the Windows updater.
-    exit /b 1
-)
+
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$p='::PS '; $l=[IO.File]::ReadAllLines($env:DW_SOURCE,[Text.Encoding]::UTF8); $o=@($l | Where-Object { $_.StartsWith($p) } | ForEach-Object { $_.Substring($p.Length) }); if ($o.Count -eq 0) { exit 2 }; [IO.File]::WriteAllLines($env:DW_PAYLOAD,$o,[Text.UTF8Encoding]::new($false))"
+if errorlevel 1 goto prepare_failed
+
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%DW_PAYLOAD%" %*
 set "DW_EXIT=%ERRORLEVEL%"
 del /f /q "%DW_PAYLOAD%" >nul 2>&1
+if not "%DW_EXIT%"=="0" (
+    echo.
+    echo [ERROR] Windows updater exited with code %DW_EXIT%.
+    echo The error is shown above; press any key to close this window.
+    pause >nul
+)
 exit /b %DW_EXIT%
+
+:prepare_failed
+echo [ERROR] Cannot prepare the Windows updater. Check that PowerShell is available.
+echo Press any key to close this window.
+pause >nul
+exit /b 1
 
 ::PS $ErrorActionPreference = 'Stop'
 ::PS $ProgressPreference = 'Continue'
