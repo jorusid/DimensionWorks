@@ -31,6 +31,7 @@ public final class MemoryDriveBlockEntity extends AENetworkInvBlockEntity {
     private final AppEngInternalInventory inventory = new AppEngInternalInventory(this, TOTAL_SLOTS, 1);
     private MemoryTier tier = MemoryTier.DDR1;
     private final MemoryDriveStore store;
+    private long inputReductionBasisPoints;
 
     private int networkDriveCount;
     private long networkCapacitySu;
@@ -122,9 +123,13 @@ public final class MemoryDriveBlockEntity extends AENetworkInvBlockEntity {
 
     public void refreshCards() {
         int previousCards = store.cardCount();
+        long previousCapacitySu = store.capacitySu();
+        long previousBandwidthRpm = store.bandwidthRpm();
+        long previousInputReductionBasisPoints = inputReductionBasisPoints;
         int cards = 0;
         long capacitySu = 0L;
         long bandwidthDeltaRpm = 0L;
+        long totalInputReductionBasisPoints = 0L;
         long baseCardCapacitySu = MekStressConfig.cardCapacitySu(tier);
         long baseDriveBandwidthRpm = MekStressConfig.driveBandwidthRpm(tier);
 
@@ -138,11 +143,17 @@ public final class MemoryDriveBlockEntity extends AENetworkInvBlockEntity {
                 baseCardCapacitySu, MekStressConfig.storageExponent(card.type())));
             bandwidthDeltaRpm = saturatedAdd(bandwidthDeltaRpm, MemoryDriveMath.bandwidthDeltaRpm(
                 baseDriveBandwidthRpm, MekStressConfig.speedExponent(card.type()), tier.slotsPerDrive()));
+            totalInputReductionBasisPoints = saturatedAdd(
+                totalInputReductionBasisPoints, card.type().inputReductionBasisPoints());
         }
         long bandwidthRpm = MemoryDriveMath.effectiveBandwidthRpm(
             baseDriveBandwidthRpm, tier.slotsPerDrive(), bandwidthDeltaRpm);
         store.setConfiguration(cards, capacitySu, bandwidthRpm);
-        if (cards != previousCards) {
+        inputReductionBasisPoints = totalInputReductionBasisPoints;
+        if (cards != previousCards
+            || capacitySu != previousCapacitySu
+            || bandwidthRpm != previousBandwidthRpm
+            || inputReductionBasisPoints != previousInputReductionBasisPoints) {
             invalidateNetworkSnapshot();
         }
         setChanged();
@@ -158,6 +169,10 @@ public final class MemoryDriveBlockEntity extends AENetworkInvBlockEntity {
 
     public long bandwidthRpm() {
         return store.bandwidthRpm();
+    }
+
+    public long inputReductionBasisPoints() {
+        return inputReductionBasisPoints;
     }
 
     public void applyNetworkSnapshot(MemoryNetworkSnapshot snapshot) {

@@ -40,6 +40,7 @@
   "memory_card_type.dimensionworks_mek_stress.high_storage": "形态：高存储型",
   "memory_card_type.dimensionworks_mek_stress.defective": "形态：劣质型",
   "memory_card_type.dimensionworks_mek_stress.final": "形态：最终型",
+  "tooltip.dimensionworks_mek_stress.memory_card_input_reduction": "输入应力扣除贡献：%s",
   "tooltip.dimensionworks_mek_stress.memory_card_capacity": "单卡 SU 容量：%s",
   "tooltip.dimensionworks_mek_stress.memory_card_bandwidth": "单卡带宽增量：%s RPM",
   "tooltip.dimensionworks_mek_stress.memory_card_full_drive": "满盘速度：%sx",

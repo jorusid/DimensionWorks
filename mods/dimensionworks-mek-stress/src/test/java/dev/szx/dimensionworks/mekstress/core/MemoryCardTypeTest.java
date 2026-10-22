@@ -19,6 +19,16 @@ class MemoryCardTypeTest {
     }
 
     @Test
+    void assignsInputStressReductionContributions() {
+        assertEquals(2_000, MemoryCardType.DEFECTIVE.inputReductionBasisPoints());
+        assertEquals(200, MemoryCardType.ECONOMY.inputReductionBasisPoints());
+        assertEquals(150, MemoryCardType.BALANCED.inputReductionBasisPoints());
+        assertEquals(175, MemoryCardType.HIGH_SPEED.inputReductionBasisPoints());
+        assertEquals(75, MemoryCardType.HIGH_STORAGE.inputReductionBasisPoints());
+        assertEquals(0, MemoryCardType.FINAL.inputReductionBasisPoints());
+    }
+
+    @Test
     void marksOnlyTheFourNormalArchetypesCraftable() {
         assertTrue(MemoryCardType.ECONOMY.craftable());
         assertTrue(MemoryCardType.BALANCED.craftable());

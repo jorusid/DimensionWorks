@@ -16,6 +16,7 @@ import dev.szx.dimensionworks.mekstress.api.IMemoryGridService;
 import dev.szx.dimensionworks.mekstress.api.MemoryNetworkSnapshot;
 import dev.szx.dimensionworks.mekstress.api.MemoryNetworkStatus;
 import dev.szx.dimensionworks.mekstress.blockentity.MemoryDriveBlockEntity;
+import dev.szx.dimensionworks.mekstress.core.InputStressMath;
 import dev.szx.dimensionworks.mekstress.core.MemoryTier;
 import dev.szx.dimensionworks.mekstress.core.NetworkMath;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public final class MemoryGridService implements IMemoryGridService, IStorageProv
     private boolean mounted;
     private long lastComputedTick = Long.MIN_VALUE;
     private long lastGearboxScanTick = Long.MIN_VALUE;
+    private long inputStressRemainderNumerator;
     private MemoryNetworkSnapshot lastSnapshot = MemoryNetworkSnapshot.empty(MemoryNetworkStatus.NO_DRIVE);
 
     private final MEStorage storage = new MEStorage() {
@@ -178,9 +180,28 @@ public final class MemoryGridService implements IMemoryGridService, IStorageProv
         if (snapshot.status() != MemoryNetworkStatus.OK) {
             return 0L;
         }
-        long remaining = amount;
+
+        List<MemoryDriveBlockEntity> drives = findDrives();
+        long totalReductionBasisPoints = 0L;
+        for (MemoryDriveBlockEntity drive : drives) {
+            totalReductionBasisPoints = saturatedAdd(
+                totalReductionBasisPoints, drive.inputReductionBasisPoints());
+        }
+        int reductionBasisPoints = InputStressMath.cappedReductionBasisPoints(totalReductionBasisPoints);
+        InputStressMath.Conversion conversion = InputStressMath.convert(
+            amount, reductionBasisPoints, inputStressRemainderNumerator);
+        long effectiveAmount = conversion.effectiveSu();
+
+        if (effectiveAmount <= 0L) {
+            if (mode == Actionable.MODULATE) {
+                inputStressRemainderNumerator = conversion.remainderNumerator();
+            }
+            return 0L;
+        }
+
+        long remaining = effectiveAmount;
         long accepted = 0L;
-        for (MemoryDriveBlockEntity drive : findDrives()) {
+        for (MemoryDriveBlockEntity drive : drives) {
             long capacity = drive.capacitySu();
             long room = Math.max(0L, capacity - drive.store().storedSu());
             long amountForDrive = Math.min(room, remaining);
@@ -202,8 +223,15 @@ public final class MemoryGridService implements IMemoryGridService, IStorageProv
                 break;
             }
         }
-        if (mode == Actionable.MODULATE && accepted > 0L) {
-            updateSnapshotStorage(accepted);
+
+        if (mode == Actionable.MODULATE) {
+            // Only carry fractional SU when the whole converted amount fit; overflow is discarded.
+            if (accepted == effectiveAmount) {
+                inputStressRemainderNumerator = conversion.remainderNumerator();
+            }
+            if (accepted > 0L) {
+                updateSnapshotStorage(accepted);
+            }
         }
         return accepted;
     }

@@ -40,6 +40,7 @@
   "memory_card_type.dimensionworks_mek_stress.high_storage": "Archetype: High-Capacity",
   "memory_card_type.dimensionworks_mek_stress.defective": "Archetype: Defective",
   "memory_card_type.dimensionworks_mek_stress.final": "Archetype: Final",
+  "tooltip.dimensionworks_mek_stress.memory_card_input_reduction": "Input stress reduction contribution: %s",
   "tooltip.dimensionworks_mek_stress.memory_card_capacity": "Single-card SU capacity: %s",
   "tooltip.dimensionworks_mek_stress.memory_card_bandwidth": "Single-card bandwidth delta: %s RPM",
   "tooltip.dimensionworks_mek_stress.memory_card_full_drive": "Full-drive speed: %sx",

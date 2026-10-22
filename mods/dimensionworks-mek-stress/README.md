@@ -26,6 +26,10 @@ KubeJS 会把 `memory_drive_ddr1..5` 和 DDR1～5 × 六形态共 30 个 `memory
 
 每种卡用二维二进制指数 `(a,v)` 描述：劣质 `(-2,-2)`、经济 `(-1,-1)`、均衡 `(0,0)`、高速 `(-1,+1)`、高存储 `(+1,-1)`、最终 `(+2,+2)`。单卡容量 `C(d,t)=C_d×2^a`；驱动器有效带宽 `B=max(0,B_d+Σ round(B_d×(2^v-1)/S_d))`。空驱动器保留基础速度，均衡满盘保持原标定。
 
+## 输入应力扣除
+
+同一 ME 网络中所有已安装内存卡的扣除贡献相加，并统一封顶为 100%。每张卡的贡献为：劣质型 20%、经济型 2%、均衡型 1.5%、高速型 1.75%、高存储型 0.75%、最终型 0%。网络有效输入应力为 `原始输入总应力 × (1 - min(总扣除比例, 100%))`；因此即使扣除比例之和超过 100%，有效应力也不会为负。计算使用整数基点并跨分次输入累计小数余量，避免不同齿轮箱分开输入时因逐次舍入产生偏差。
+
 每个逻辑 AE 网络最多统计两台 Drive。第三台会使网络容量、带宽和输出归零，但 Drive 内已有 Card 与 SU 不会丢失；移除多余 Drive 后自动恢复。
 
 ## 应力守恒
@@ -61,13 +65,13 @@ ME Gearbox EXPORT 向 Create 网络宣告的容量严格等于本次实际扣除
 ## 工程接口
 
 - `memory_drive_ddr1..5`：使用 AE2 驱动器背景，每页 4 列 × 5 行共 20 槽，按 DDR 等级只接受同等级 Memory Card。
-- `memory_card_ddrN_{economy,balanced,high_speed,high_storage,defective,final}`：只影响所在驱动器的容量与有效带宽。
+- `memory_card_ddrN_{economy,balanced,high_speed,high_storage,defective,final}`：影响所在驱动器容量、有效带宽，并向所在 ME 网络贡献输入应力扣除比例。
 - 正常卡配方每次固定产出 4 张；每张独立有 25% 概率变为同 DDR 劣质卡，自动合成假玩家跳过该判定。
 - 经济型、均衡型、高速型、高存储型可合成；劣质型只作副产物，最终型仅注册，毕业配方待定。
 - `appliedcreate:me_gearbox`：IMPORT 输入应力到 AE，EXPORT 从 AE 输出应力并执行 SU 守恒。
 - `/dw memory`：读取附近已连接 Drive 所在逻辑网格的状态快照。
 
-所有平衡值位于 COMMON 配置 `dimensionworks_mek_stress-common.toml`。槽数、结构规则、两台 Drive 上限、公式和齿轮箱守恒边界不可配置。
+容量、带宽、机器转速等平衡值位于 COMMON 配置 `dimensionworks_mek_stress-common.toml`；内存卡输入应力扣除比例由卡型固定定义。槽数、结构规则、两台 Drive 上限、100% 扣除上限和齿轮箱守恒边界不可配置。
 
 ## 构建
 

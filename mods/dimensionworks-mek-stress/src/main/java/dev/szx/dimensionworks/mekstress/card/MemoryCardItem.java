@@ -40,6 +40,8 @@ public final class MemoryCardItem extends Item {
             MekStressConfig.driveBandwidthRpm(tier), MekStressConfig.speedExponent(type), tier.slotsPerDrive());
         double fullDriveMultiplier = Math.scalb(1.0D, MekStressConfig.speedExponent(type));
         tooltip.add(Component.translatable(typeTranslationKey()).withStyle(typeColor()));
+        tooltip.add(Component.translatable("tooltip.dimensionworks_mek_stress.memory_card_input_reduction",
+            percentage(type.inputReductionBasisPoints())).withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("tooltip.dimensionworks_mek_stress.memory_card_capacity",
             capacitySu).withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("tooltip.dimensionworks_mek_stress.memory_card_bandwidth",
@@ -65,6 +67,10 @@ public final class MemoryCardItem extends Item {
 
     private static String signed(long value) {
         return value > 0L ? "+" + value : Long.toString(value);
+    }
+
+    private static String percentage(int basisPoints) {
+        return String.format(Locale.ROOT, "%.2f%%", basisPoints / 100.0D);
     }
 
     private static String multiplier(double value) {
