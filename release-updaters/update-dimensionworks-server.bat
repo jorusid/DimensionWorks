@@ -5,7 +5,7 @@ set "DW_SCRIPT_NAME=update-dimensionworks-server.bat"
 set "DW_SOURCE=%~f0"
 set "DW_PAYLOAD=%TEMP%\DimensionWorks-%DW_KIND%-%RANDOM%-%RANDOM%.ps1"
 
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$p='::PS '; $l=[IO.File]::ReadAllLines($env:DW_SOURCE,[Text.Encoding]::UTF8); $o=@($l | Where-Object { $_.StartsWith($p) } | ForEach-Object { $_.Substring($p.Length) }); if ($o.Count -eq 0) { exit 2 }; [IO.File]::WriteAllLines($env:DW_PAYLOAD,$o,[Text.UTF8Encoding]::new($false))"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$p='::PS '; $l=[IO.File]::ReadAllLines($env:DW_SOURCE,[Text.Encoding]::UTF8); $o=@($l | Where-Object { $_.StartsWith($p) } | ForEach-Object { $_.Substring($p.Length) }); if ($o.Count -eq 0) { exit 2 }; [IO.File]::WriteAllLines($env:DW_PAYLOAD,$o,[Text.UTF8Encoding]::new($true))"
 if errorlevel 1 goto prepare_failed
 
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%DW_PAYLOAD%" %*
