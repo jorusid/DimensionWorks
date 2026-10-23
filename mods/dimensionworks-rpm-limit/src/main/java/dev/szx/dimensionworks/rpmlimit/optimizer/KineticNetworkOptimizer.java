@@ -18,6 +18,7 @@ import java.util.WeakHashMap;
  */
 public final class KineticNetworkOptimizer {
     private static final int MAX_INCREMENTAL_STRESS_UPDATES = 4096;
+    private static final int MAX_INCREMENTAL_CAPACITY_UPDATES = 4096;
 
     private static final Map<KineticNetwork, NetworkCache> CACHES =
         Collections.synchronizedMap(new WeakHashMap<>());
@@ -98,6 +99,7 @@ public final class KineticNetworkOptimizer {
 
         cache.capacityTotal = totalCapacity;
         cache.capacityValid = true;
+        cache.capacityDeltaUpdates = 0;
     }
 
     /**
@@ -133,7 +135,7 @@ public final class KineticNetworkOptimizer {
         cache.stressContributions.put(member, newValue);
         cache.stressDeltaUpdates++;
 
-        if (!Float.isFinite(cache.stressTotal)
+        if (!Float.isFinite(cache.stressTotal) || cache.stressTotal < 0.0F
             || cache.stressDeltaUpdates >= MAX_INCREMENTAL_STRESS_UPDATES) {
             invalidateStress(network);
             return false;
@@ -167,9 +169,16 @@ public final class KineticNetworkOptimizer {
             return false;
         }
 
+        if (Float.compare(oldValue, newValue) == 0) {
+            return true;
+        }
+
         cache.capacityTotal = applyDelta(cache.capacityTotal, oldValue, newValue);
         cache.capacityContributions.put(source, newValue);
-        if (!Float.isFinite(cache.capacityTotal)) {
+        cache.capacityDeltaUpdates++;
+
+        if (!Float.isFinite(cache.capacityTotal) || cache.capacityTotal < 0.0F
+            || cache.capacityDeltaUpdates >= MAX_INCREMENTAL_CAPACITY_UPDATES) {
             invalidateCapacity(network);
             return false;
         }
@@ -365,6 +374,7 @@ public final class KineticNetworkOptimizer {
         private float stressTotal;
         private float capacityTotal;
         private int stressDeltaUpdates;
+        private int capacityDeltaUpdates;
     }
 
     private static final class Batch {
