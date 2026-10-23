@@ -3,6 +3,7 @@ package dev.szx.dimensionworks.mekstress.mixin.create;
 import com.simibubi.create.content.kinetics.KineticNetwork;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import dev.szx.dimensionworks.mekstress.memory.IVirtualKineticMember;
+import dev.szx.dimensionworks.rpmlimit.optimizer.KineticNetworkOptimizer;
 import java.util.Iterator;
 import java.util.Map;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,6 +22,14 @@ public abstract class KineticNetworkMixin {
 
     @Inject(method = "calculateStress", at = @At("HEAD"), cancellable = true, remap = false)
     private void dimensionworks$calculateVirtualMachineStress(CallbackInfoReturnable<Float> cir) {
+        KineticNetwork network = (KineticNetwork) (Object) this;
+        Float cached = KineticNetworkOptimizer.cachedStress(network);
+        if (cached != null) {
+            cir.setReturnValue(cached);
+            return;
+        }
+
+        KineticNetworkOptimizer.beginStressRebuild(network);
         float presentStress = 0.0F;
         Iterator<KineticBlockEntity> iterator = members.keySet().iterator();
         while (iterator.hasNext()) {
@@ -35,8 +44,13 @@ public abstract class KineticNetworkMixin {
                 iterator.remove();
                 continue;
             }
-            presentStress += ((KineticNetwork) (Object) this).getActualStressOf(member);
+
+            float contribution = network.getActualStressOf(member);
+            KineticNetworkOptimizer.recordStressContribution(network, member, contribution);
+            presentStress += contribution;
         }
-        cir.setReturnValue(presentStress + unloadedStress);
+        float totalStress = presentStress + unloadedStress;
+        KineticNetworkOptimizer.finishStressRebuild(network, totalStress);
+        cir.setReturnValue(totalStress);
     }
 }
