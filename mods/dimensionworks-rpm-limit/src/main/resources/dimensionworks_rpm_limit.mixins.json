@@ -6,6 +6,7 @@
   "refmap": "dimensionworks_rpm_limit.refmap.json",
   "mixins": [
     "KineticBlockEntityMixin",
+    "GeneratingKineticBlockEntityMixin",
     "KineticNetworkMixin",
     "ChunkMapAccessor",
     "ValueSettingsPacketMixin",
@@ -22,7 +23,8 @@
     "SawBlockEntityMixin",
     "MechanicalPressBlockEntityMixin",
     "PressingBehaviourMixin",
-    "BeltPressingCallbacksMixin"
+    "BeltPressingCallbacksMixin",
+    "minecraft.KineticBlockEntityLifecycleMixin"
   ],
   "client": [
     "client.KineticBlockEntityRendererMixin",
