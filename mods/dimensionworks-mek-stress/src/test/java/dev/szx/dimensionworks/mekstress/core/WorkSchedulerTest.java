@@ -15,4 +15,32 @@ class WorkSchedulerTest {
         assertEquals(2, WorkScheduler.callsForRate(2.5D, 10L));
         assertEquals(3, WorkScheduler.callsForRate(2.5D, 11L));
     }
+
+    @Test
+    void aTickGapDoesNotCatchUpHistoricalWork() {
+        WorkScheduler.Advance first = WorkScheduler.advance(1.0D, 0L, null);
+        WorkScheduler.Advance afterGap = WorkScheduler.advance(1.0D, 12_000L, first);
+
+        assertEquals(1, afterGap.calls());
+    }
+
+    @Test
+    void aRateChangeDoesNotCatchUpHistoricalWork() {
+        WorkScheduler.Advance first = WorkScheduler.advance(1.0D, 100L, null);
+        WorkScheduler.Advance changed = WorkScheduler.advance(10.0D, 101L, first);
+
+        assertEquals(10, changed.calls());
+    }
+
+    @Test
+    void contiguousFractionalWorkStillAveragesOut() {
+        WorkScheduler.Advance previous = null;
+        long total = 0L;
+        for (long tick = 0L; tick < 1_000L; tick++) {
+            previous = WorkScheduler.advance(2.5D, tick, previous);
+            total += previous.calls();
+        }
+
+        assertEquals(2_500L, total);
+    }
 }

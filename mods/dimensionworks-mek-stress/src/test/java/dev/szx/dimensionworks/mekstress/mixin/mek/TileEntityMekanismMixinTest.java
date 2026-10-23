@@ -44,4 +44,21 @@ class TileEntityMekanismMixinTest {
         }
         assertTrue(found, "tickServer must be wrapped at the onUpdateServer call site");
     }
+
+    @Test
+    void removesVirtualMembersWhenTheMachineIsRemovedOrUnloaded() {
+        boolean found = false;
+        for (Method handler : TileEntityMekanismMixin.class.getDeclaredMethods()) {
+            Inject inject = handler.getAnnotation(Inject.class);
+            if (inject == null) {
+                continue;
+            }
+            for (String target : inject.method()) {
+                if ("setRemoved".equals(target)) {
+                    found = true;
+                }
+            }
+        }
+        assertTrue(found, "setRemoved must detach the machine's virtual kinetic member");
+    }
 }
