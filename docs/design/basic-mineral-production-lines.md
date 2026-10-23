@@ -19,6 +19,7 @@
 |---|---|---|---|---|
 | minecraft:raw_iron | 1× minecraft:raw_iron；2× minecraft:cobblestone；1× minecraft:gravel | 1× minecraft:raw_iron；2× create:andesite_alloy | 1× minecraft:raw_iron；2× kubejs:mineral_residue；1× minecraft:iron_nugget；1× minecraft:gravel；250 mB minecraft:water | 加热 |
 | minecraft:raw_copper | 1× minecraft:raw_copper；2× minecraft:gravel；1× minecraft:calcite | 1× minecraft:raw_copper；2× minecraft:flint | 1× minecraft:raw_copper；2× kubejs:mineral_residue；1× minecraft:copper_ingot；1× minecraft:gravel；250 mB minecraft:water | 加热 |
+| create:raw_zinc | 1× create:raw_zinc；2× minecraft:cobblestone；1× minecraft:quartz | 1× create:raw_zinc；2× create:brass_ingot | 1× create:raw_zinc；3× kubejs:mineral_residue；1× create:zinc_ingot；1× minecraft:gravel；500 mB minecraft:water | 加热 |
 | minecraft:raw_gold | 1× minecraft:raw_gold；2× minecraft:netherrack；1× minecraft:quartz | 1× minecraft:raw_gold；3× minecraft:blaze_powder | 1× minecraft:raw_gold；3× kubejs:mineral_residue；1× minecraft:gold_nugget；1× minecraft:netherrack；500 mB minecraft:water | 加热 |
 | minecraft:coal | 1× minecraft:coal；2× minecraft:charcoal；1× minecraft:gravel | 1× minecraft:coal；2× minecraft:charcoal | 1× minecraft:coal；2× kubejs:mineral_residue；1× minecraft:charcoal；1× minecraft:gravel；250 mB minecraft:water | 加热 |
 | minecraft:redstone | 1× minecraft:redstone；1× minecraft:clay_ball；1× minecraft:iron_nugget；1× minecraft:flint | 1× minecraft:redstone；2× minecraft:glowstone_dust | 1× minecraft:redstone；3× kubejs:mineral_residue；1× minecraft:clay_ball；1× minecraft:flint；250 mB minecraft:water | 加热 |
@@ -56,7 +57,7 @@ self_propagation/basic_minerals/<目标路径>/<路线>
 
 ## 范围说明
 
-纳入：原版基础矿物（铁、铜、金、煤、红石、青金石、下界石英、钻石、绿宝石、紫水晶碎片、远古残骸）及 Mekanism 常规金属（锡、铅、锇、铀）。
+纳入：原版基础矿物（铁、铜、金、煤、红石、青金石、下界石英、钻石、绿宝石、紫水晶碎片、远古残骸）以及 Create 锌和 Mekanism 常规金属（锡、铅、锇、铀）。
 
 不纳入：洞穴维度专属稀有资源与其他维度进度门槛资源；这些继续由各自维度生产生态控制。远古残骸虽为原版矿石，但按末期资源处理，成本显著高于普通矿物。
 

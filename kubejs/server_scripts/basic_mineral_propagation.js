@@ -40,6 +40,24 @@ const BASIC_MINERAL_LINES = [
     "heat": "heated"
   },
   {
+    "item": "create:raw_zinc",
+    "path": "zinc",
+    "compactingInputs": [
+      "2x minecraft:cobblestone",
+      "minecraft:quartz"
+    ],
+    "mekanismCarrier": "create:brass_ingot",
+    "mekanismCarrierCount": 2,
+    "residueCount": 3,
+    "recoveryInputs": [
+      "create:zinc_ingot",
+      "minecraft:gravel"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "fluidAmount": 500,
+    "heat": "heated"
+  },
+  {
     "item": "minecraft:raw_gold",
     "path": "gold",
     "compactingInputs": [
@@ -359,4 +377,5 @@ ServerEvents.recipes(event => {
     }
     mineralRecipe(recoveryRecipe, recipePath + 'residue_recovery')
   })
+  console.info('[DimensionWorks] BASIC_MINERAL_RECIPES_REGISTERED targets=' + BASIC_MINERAL_LINES.length + ' recipes=' + (BASIC_MINERAL_LINES.length * 3))
 })

@@ -14,6 +14,7 @@ TEXTURE = ROOT / "kubejs/assets/kubejs/textures/item/mineral_residue.png"
 EXPECTED_ITEMS = (
     "minecraft:raw_iron",
     "minecraft:raw_copper",
+    "create:raw_zinc",
     "minecraft:raw_gold",
     "minecraft:coal",
     "minecraft:redstone",
@@ -51,7 +52,7 @@ class BasicMineralPropagationTest(unittest.TestCase):
         items = tuple(line["item"] for line in self.lines)
         self.assertEqual(items, EXPECTED_ITEMS)
         self.assertEqual(len(items), len(set(items)))
-        self.assertEqual(len(self.lines), 15)
+        self.assertEqual(len(self.lines), 16)
 
     def test_every_target_declares_three_recipe_styles(self) -> None:
         suffixes = (
@@ -71,6 +72,14 @@ class BasicMineralPropagationTest(unittest.TestCase):
                 self.assertIn(line["heat"], ("heated", "superheated"))
         for suffix in suffixes:
             self.assertIn("recipePath + '" + suffix + "'", self.source)
+
+    def test_mekanism_combiner_uses_native_1201_json_shape(self) -> None:
+        self.assertIn("event.custom(JsonIO.of({", self.source)
+        self.assertIn("type: 'mekanism:combining'", self.source)
+        self.assertIn("mainInput:", self.source)
+        self.assertIn("extraInput:", self.source)
+        self.assertIn("amount: mineral.mekanismCarrierCount", self.source)
+        self.assertIn("BASIC_MINERAL_RECIPES_REGISTERED", self.source)
 
     def test_high_value_targets_have_real_cost_escalation(self) -> None:
         by_item = {line["item"]: line for line in self.lines}

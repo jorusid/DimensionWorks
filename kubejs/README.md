@@ -56,6 +56,6 @@ Create 的 Mixer、Press、Crushing Wheels、Saw、Deployer、Spout、Fan 等加
 
 ## 基础矿物与常规金属三路线
 
-server_scripts/basic_mineral_propagation.js 为 15 种目标资源配置三条不同路线：Create 固体压制、Mekanism 高端合成、Create 加热残渣回收。压制线产出通用矿物残渣；每条路线均要求对应目标的有限样本作为输入，回收线还要消耗残渣、辅料、流体与热量。
+server_scripts/basic_mineral_propagation.js 为 16 种目标资源配置三条不同路线：Create 固体压制、Mekanism 高端合成、Create 加热残渣回收。压制线产出通用矿物残渣；每条路线均要求对应目标的有限样本作为输入，回收线还要消耗残渣、辅料、流体与热量。
 
 完整目标清单、配方成本和游戏内验收步骤见 ../docs/design/basic-mineral-production-lines.md。
