@@ -250,7 +250,20 @@ public final class KineticNetworkOptimizer {
         }
     }
 
+    /** Invalidates totals without forcing work during block removal or chunk unload. */
     public static void invalidateFor(KineticBlockEntity member) {
+        if (member == null || member.getLevel() == null || member.getLevel().isClientSide
+            || !member.hasNetwork()) {
+            return;
+        }
+        invalidate(member.getOrCreateNetwork());
+    }
+
+    /**
+     * Invalidates and schedules one live member to perform the ordinary full refresh. Use this for
+     * mutable rules such as a player's RPM limit; do not use it from a removal lifecycle hook.
+     */
+    public static void invalidateAndRefreshFor(KineticBlockEntity member) {
         if (member == null || member.getLevel() == null || member.getLevel().isClientSide
             || !member.hasNetwork()) {
             return;
@@ -264,9 +277,8 @@ public final class KineticNetworkOptimizer {
             return;
         }
 
-        // Prefer a different live member because a lifecycle hook may be running on a member
-        // that is being removed. If the changed member is still present and is the only one, it
-        // is a valid fallback to drive the ordinary full refresh.
+        // Prefer a different live member because the changed member may be part of a removal path.
+        // If it is still live and is the only member, it is a valid fallback.
         KineticBlockEntity fallback = null;
         for (KineticBlockEntity candidate : network.members.keySet()) {
             if (candidate.getLevel() == null || candidate.getLevel().isClientSide
