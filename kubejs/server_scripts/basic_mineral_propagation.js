@@ -70,4 +70,49 @@ ServerEvents.recipes(event => {
     '2x minecraft:netherrack',
     'minecraft:soul_sand'
   ]), 'quartz/seeded_growth')
+
+  // High-value vanilla minerals require substantially more carrier material.
+  mineralRecipe(compacting('2x minecraft:diamond', [
+    'minecraft:diamond',
+    '4x minecraft:coal',
+    '2x minecraft:obsidian',
+    '2x minecraft:quartz'
+  ]), 'diamond/seeded_growth')
+
+  mineralRecipe(compacting('2x minecraft:emerald', [
+    'minecraft:emerald',
+    '4x minecraft:clay_ball',
+    '2x minecraft:bone_meal',
+    '2x minecraft:moss_block',
+    'minecraft:amethyst_shard'
+  ]), 'emerald/seeded_growth')
+
+  // Mekanism conventional metals. These remain separate from dimension-unique ores.
+  mineralRecipe(compacting('2x mekanism:raw_tin', [
+    'mekanism:raw_tin',
+    '2x minecraft:cobblestone',
+    'minecraft:gravel',
+    'minecraft:copper_ingot'
+  ]), 'tin/seeded_growth')
+
+  mineralRecipe(compacting('2x mekanism:raw_lead', [
+    'mekanism:raw_lead',
+    '2x minecraft:gravel',
+    'minecraft:flint',
+    'minecraft:iron_ingot'
+  ]), 'lead/seeded_growth')
+
+  mineralRecipe(compacting('2x mekanism:raw_osmium', [
+    'mekanism:raw_osmium',
+    '2x minecraft:deepslate',
+    'minecraft:iron_ingot',
+    'minecraft:quartz'
+  ]), 'osmium/seeded_growth')
+
+  mineralRecipe(compacting('2x mekanism:raw_uranium', [
+    'mekanism:raw_uranium',
+    '2x minecraft:basalt',
+    'minecraft:gunpowder',
+    'minecraft:quartz'
+  ]), 'uranium/seeded_growth')
 })
