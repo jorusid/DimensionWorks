@@ -801,6 +801,18 @@
       "url": "https://modrinth.com/mod/kubejs"
     },
     {
+      "id": "kubejs_mekanism",
+      "name": "KubeJS Mekanism UNOFFICIAL",
+      "source": "curseforge",
+      "project_slug": "kubejs-mekanism-unofficial",
+      "file_id": 5532573,
+      "file_name": "kubejs-mekanism-forge-2001.1.5.1-build.2.jar",
+      "version": "2001.1.5.1-build.2",
+      "required": true,
+      "environment": "both",
+      "url": "https://www.curseforge.com/minecraft/mc-mods/kubejs-mekanism-unofficial"
+    },
+    {
       "id": "kubejs_create",
       "name": "KubeJS Create",
       "source": "modrinth",
