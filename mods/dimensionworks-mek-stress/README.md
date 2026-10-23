@@ -35,7 +35,7 @@ KubeJS 会把 `memory_drive_ddr1..5` 和 DDR1～5 × 六形态共 30 个 `memory
 ## 应力守恒
 
 ```text
-idleLoad       = effectiveRpm * 256
+idleLoad       = effectiveRpm * 8
 fullLoad       = max(idleLoad, Create 网络完整应力负载)
 requestedSu    = ceil(fullLoad)
 rpmQ           = min(1, bandwidthRpm / requestedRpm)
