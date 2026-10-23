@@ -2,7 +2,7 @@ package dev.szx.dimensionworks.mekstress.core;
 
 /** Fixed mechanical load charged by a running Mekanism machine or idle gearbox. */
 public final class MachinePowerMath {
-    public static final long SU_PER_RPM = 8L;
+    public static final long SU_PER_RPM = 256L;
 
     private MachinePowerMath() {
     }
@@ -105,7 +105,7 @@ public final class MachinePowerMath {
 
     /**
      * Keeps an idle export gearbox rotating while preserving the documented
-     * RPM x 8 load for a single standard machine.
+     * RPM x 256 load for a single standard machine.
      */
     public static double gearboxLoad(double downstreamLoad, int effectiveRpm) {
         if (effectiveRpm <= 0) {
