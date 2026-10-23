@@ -1,19 +1,310 @@
-// DimensionWorks basic mineral propagation.
-// A finite raw-mineral sample starts each line; renewable stone/carbon/clay inputs
-// provide the carrier material. Every recipe consumes the sample and returns two
-// samples, allowing the line to sustain itself while paying a continuous material cost.
+// DimensionWorks seeded mineral propagation: three distinct production styles per target.
+// First obtain one finite sample of each target; every route consumes its sample and returns two.
 const BASIC_MINERAL_RECIPES = 'dimensionworks_cave_factory:self_propagation/basic_minerals/'
+
+const BASIC_MINERAL_LINES = [
+  {
+    "item": "minecraft:raw_iron",
+    "path": "iron",
+    "compactingInputs": [
+      "2x minecraft:cobblestone",
+      "minecraft:gravel"
+    ],
+    "mekanismCarrier": "create:andesite_alloy",
+    "mekanismCarrierCount": 2,
+    "residueCount": 2,
+    "recoveryInputs": [
+      "minecraft:iron_nugget",
+      "minecraft:gravel"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 250,
+    "heat": "heated"
+  },
+  {
+    "item": "minecraft:raw_copper",
+    "path": "copper",
+    "compactingInputs": [
+      "2x minecraft:gravel",
+      "minecraft:calcite"
+    ],
+    "mekanismCarrier": "minecraft:flint",
+    "mekanismCarrierCount": 2,
+    "residueCount": 2,
+    "recoveryInputs": [
+      "minecraft:copper_ingot",
+      "minecraft:gravel"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 250,
+    "heat": "heated"
+  },
+  {
+    "item": "minecraft:raw_gold",
+    "path": "gold",
+    "compactingInputs": [
+      "2x minecraft:netherrack",
+      "minecraft:quartz"
+    ],
+    "mekanismCarrier": "minecraft:blaze_powder",
+    "mekanismCarrierCount": 3,
+    "residueCount": 3,
+    "recoveryInputs": [
+      "minecraft:gold_nugget",
+      "minecraft:netherrack"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 500,
+    "heat": "heated"
+  },
+  {
+    "item": "minecraft:coal",
+    "path": "coal",
+    "compactingInputs": [
+      "2x minecraft:charcoal",
+      "minecraft:gravel"
+    ],
+    "mekanismCarrier": "minecraft:charcoal",
+    "mekanismCarrierCount": 2,
+    "residueCount": 2,
+    "recoveryInputs": [
+      "minecraft:charcoal",
+      "minecraft:gravel"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 250,
+    "heat": "heated"
+  },
+  {
+    "item": "minecraft:redstone",
+    "path": "redstone",
+    "compactingInputs": [
+      "minecraft:clay_ball",
+      "minecraft:iron_nugget",
+      "minecraft:flint"
+    ],
+    "mekanismCarrier": "minecraft:glowstone_dust",
+    "mekanismCarrierCount": 2,
+    "residueCount": 3,
+    "recoveryInputs": [
+      "minecraft:clay_ball",
+      "minecraft:flint"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 250,
+    "heat": "heated"
+  },
+  {
+    "item": "minecraft:lapis_lazuli",
+    "path": "lapis",
+    "compactingInputs": [
+      "minecraft:clay_ball",
+      "minecraft:bone_meal",
+      "minecraft:gravel"
+    ],
+    "mekanismCarrier": "minecraft:clay_ball",
+    "mekanismCarrierCount": 2,
+    "residueCount": 3,
+    "recoveryInputs": [
+      "minecraft:clay_ball",
+      "minecraft:bone_meal",
+      "minecraft:gravel"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 500,
+    "heat": "heated"
+  },
+  {
+    "item": "minecraft:quartz",
+    "path": "quartz",
+    "compactingInputs": [
+      "2x minecraft:netherrack",
+      "minecraft:soul_sand"
+    ],
+    "mekanismCarrier": "minecraft:soul_sand",
+    "mekanismCarrierCount": 2,
+    "residueCount": 2,
+    "recoveryInputs": [
+      "minecraft:netherrack",
+      "minecraft:soul_sand"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 250,
+    "heat": "heated"
+  },
+  {
+    "item": "minecraft:diamond",
+    "path": "diamond",
+    "compactingInputs": [
+      "4x minecraft:coal",
+      "2x minecraft:obsidian",
+      "2x minecraft:quartz"
+    ],
+    "mekanismCarrier": "minecraft:obsidian",
+    "mekanismCarrierCount": 4,
+    "residueCount": 6,
+    "recoveryInputs": [
+      "2x minecraft:obsidian",
+      "2x minecraft:quartz"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 1000,
+    "heat": "superheated"
+  },
+  {
+    "item": "minecraft:emerald",
+    "path": "emerald",
+    "compactingInputs": [
+      "4x minecraft:clay_ball",
+      "2x minecraft:bone_meal",
+      "2x minecraft:moss_block",
+      "minecraft:amethyst_shard"
+    ],
+    "mekanismCarrier": "minecraft:moss_block",
+    "mekanismCarrierCount": 4,
+    "residueCount": 6,
+    "recoveryInputs": [
+      "2x minecraft:clay_ball",
+      "2x minecraft:bone_meal",
+      "2x minecraft:moss_block",
+      "minecraft:amethyst_shard"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 1000,
+    "heat": "superheated"
+  },
+  {
+    "item": "minecraft:amethyst_shard",
+    "path": "amethyst",
+    "compactingInputs": [
+      "2x minecraft:calcite",
+      "2x minecraft:quartz"
+    ],
+    "mekanismCarrier": "minecraft:glowstone_dust",
+    "mekanismCarrierCount": 2,
+    "residueCount": 3,
+    "recoveryInputs": [
+      "minecraft:calcite",
+      "minecraft:quartz",
+      "minecraft:glowstone_dust"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 500,
+    "heat": "heated"
+  },
+  {
+    "item": "minecraft:ancient_debris",
+    "path": "ancient_debris",
+    "compactingInputs": [
+      "4x minecraft:netherrack",
+      "2x minecraft:basalt",
+      "2x minecraft:quartz"
+    ],
+    "mekanismCarrier": "minecraft:netherite_ingot",
+    "mekanismCarrierCount": 1,
+    "residueCount": 8,
+    "recoveryInputs": [
+      "2x minecraft:netherite_scrap",
+      "4x minecraft:netherrack",
+      "2x minecraft:basalt"
+    ],
+    "recoveryFluid": "minecraft:lava",
+    "waterAmount": 1000,
+    "heat": "superheated"
+  },
+  {
+    "item": "mekanism:raw_tin",
+    "path": "tin",
+    "compactingInputs": [
+      "2x minecraft:cobblestone",
+      "minecraft:gravel",
+      "minecraft:copper_ingot"
+    ],
+    "mekanismCarrier": "minecraft:deepslate",
+    "mekanismCarrierCount": 2,
+    "residueCount": 2,
+    "recoveryInputs": [
+      "minecraft:copper_ingot",
+      "minecraft:cobblestone"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 500,
+    "heat": "heated"
+  },
+  {
+    "item": "mekanism:raw_lead",
+    "path": "lead",
+    "compactingInputs": [
+      "2x minecraft:gravel",
+      "minecraft:flint",
+      "minecraft:iron_ingot"
+    ],
+    "mekanismCarrier": "minecraft:flint",
+    "mekanismCarrierCount": 2,
+    "residueCount": 2,
+    "recoveryInputs": [
+      "minecraft:iron_ingot",
+      "minecraft:gravel",
+      "minecraft:flint"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 500,
+    "heat": "heated"
+  },
+  {
+    "item": "mekanism:raw_osmium",
+    "path": "osmium",
+    "compactingInputs": [
+      "2x minecraft:deepslate",
+      "minecraft:iron_ingot",
+      "minecraft:quartz"
+    ],
+    "mekanismCarrier": "create:brass_ingot",
+    "mekanismCarrierCount": 2,
+    "residueCount": 3,
+    "recoveryInputs": [
+      "minecraft:iron_ingot",
+      "minecraft:deepslate",
+      "minecraft:quartz"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 500,
+    "heat": "heated"
+  },
+  {
+    "item": "mekanism:raw_uranium",
+    "path": "uranium",
+    "compactingInputs": [
+      "2x minecraft:basalt",
+      "minecraft:gunpowder",
+      "minecraft:quartz"
+    ],
+    "mekanismCarrier": "minecraft:gunpowder",
+    "mekanismCarrierCount": 4,
+    "residueCount": 4,
+    "recoveryInputs": [
+      "minecraft:basalt",
+      "minecraft:gunpowder",
+      "minecraft:quartz"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "waterAmount": 1000,
+    "heat": "superheated"
+  }
+]
 
 function mineralRecipe(recipe, path) {
   return recipe.id(BASIC_MINERAL_RECIPES + path)
 }
 
+// Create processing ingredients are consumed per ingredient entry, not by "2x item"
+// strings. Expand counts before registering the recipe so displayed and real costs match.
 function expandMineralIngredients(inputs) {
   const expanded = []
   inputs.forEach(entry => {
     const match = typeof entry === 'string' ? /^(\d+)x (.+)$/.exec(entry) : null
     if (match) {
-      for (let i = 0; i < Number(match[1]); i++) expanded.push(match[2])
+      for (let index = 0; index < Number(match[1]); index++) expanded.push(match[2])
     } else {
       expanded.push(entry)
     }
@@ -22,97 +313,50 @@ function expandMineralIngredients(inputs) {
 }
 
 ServerEvents.recipes(event => {
-  const compacting = (output, inputs) =>
-    event.recipes.create.compacting(output, expandMineralIngredients(inputs))
+  BASIC_MINERAL_LINES.forEach(mineral => {
+    const item = mineral.item
+    const recipePath = mineral.path + '/'
 
-  // Common metals: stone-derived carriers plus mineral-specific additives.
-  mineralRecipe(compacting('2x minecraft:raw_iron', [
-    'minecraft:raw_iron',
-    '2x minecraft:cobblestone',
-    'minecraft:gravel'
-  ]), 'iron/seeded_growth')
+    // Line 1 — Create mechanical compaction. The output includes a guaranteed residue.
+    const compactingRecipe = event.recipes.create.compacting(
+      ['2x ' + item, 'kubejs:mineral_residue'],
+      expandMineralIngredients([item].concat(mineral.compactingInputs))
+    )
+    mineralRecipe(compactingRecipe, recipePath + 'mechanical_growth')
 
-  mineralRecipe(compacting('2x minecraft:raw_copper', [
-    'minecraft:raw_copper',
-    '2x minecraft:gravel',
-    'minecraft:calcite'
-  ]), 'copper/seeded_growth')
+    // Line 2 — Mekanism combiner. This uses Mekanism's native serializer directly;
+    // the pack does not depend on an optional KubeJS Mekanism addon.
+    const combiningRecipe = event.custom({
+      type: 'mekanism:combining',
+      mainInput: {
+        ingredient: { item: item },
+        amount: 1
+      },
+      extraInput: {
+        ingredient: { item: mineral.mekanismCarrier },
+        amount: mineral.mekanismCarrierCount
+      },
+      output: {
+        item: item,
+        count: 2
+      }
+    })
+    mineralRecipe(combiningRecipe, recipePath + 'mekanism_combining')
 
-  mineralRecipe(compacting('2x minecraft:raw_gold', [
-    'minecraft:raw_gold',
-    '2x minecraft:netherrack',
-    'minecraft:quartz'
-  ]), 'gold/seeded_growth')
-
-  // Non-metallic minerals use renewable carriers, but have distinct costs.
-  mineralRecipe(compacting('2x minecraft:coal', [
-    'minecraft:coal',
-    '2x minecraft:charcoal',
-    'minecraft:gravel'
-  ]), 'coal/seeded_growth')
-
-  mineralRecipe(compacting('2x minecraft:redstone', [
-    'minecraft:redstone',
-    'minecraft:clay_ball',
-    'minecraft:iron_nugget',
-    'minecraft:flint'
-  ]), 'redstone/seeded_growth')
-
-  mineralRecipe(compacting('2x minecraft:lapis_lazuli', [
-    'minecraft:lapis_lazuli',
-    'minecraft:clay_ball',
-    'minecraft:bone_meal',
-    'minecraft:gravel'
-  ]), 'lapis/seeded_growth')
-
-  mineralRecipe(compacting('2x minecraft:quartz', [
-    'minecraft:quartz',
-    '2x minecraft:netherrack',
-    'minecraft:soul_sand'
-  ]), 'quartz/seeded_growth')
-
-  // High-value vanilla minerals require substantially more carrier material.
-  mineralRecipe(compacting('2x minecraft:diamond', [
-    'minecraft:diamond',
-    '4x minecraft:coal',
-    '2x minecraft:obsidian',
-    '2x minecraft:quartz'
-  ]), 'diamond/seeded_growth')
-
-  mineralRecipe(compacting('2x minecraft:emerald', [
-    'minecraft:emerald',
-    '4x minecraft:clay_ball',
-    '2x minecraft:bone_meal',
-    '2x minecraft:moss_block',
-    'minecraft:amethyst_shard'
-  ]), 'emerald/seeded_growth')
-
-  // Mekanism conventional metals. These remain separate from dimension-unique ores.
-  mineralRecipe(compacting('2x mekanism:raw_tin', [
-    'mekanism:raw_tin',
-    '2x minecraft:cobblestone',
-    'minecraft:gravel',
-    'minecraft:copper_ingot'
-  ]), 'tin/seeded_growth')
-
-  mineralRecipe(compacting('2x mekanism:raw_lead', [
-    'mekanism:raw_lead',
-    '2x minecraft:gravel',
-    'minecraft:flint',
-    'minecraft:iron_ingot'
-  ]), 'lead/seeded_growth')
-
-  mineralRecipe(compacting('2x mekanism:raw_osmium', [
-    'mekanism:raw_osmium',
-    '2x minecraft:deepslate',
-    'minecraft:iron_ingot',
-    'minecraft:quartz'
-  ]), 'osmium/seeded_growth')
-
-  mineralRecipe(compacting('2x mekanism:raw_uranium', [
-    'mekanism:raw_uranium',
-    '2x minecraft:basalt',
-    'minecraft:gunpowder',
-    'minecraft:quartz'
-  ]), 'uranium/seeded_growth')
+    // Line 3 — Create heated residue recovery. A mineral sample is still required:
+    // universal residue is a feedstock, not a bypass around the finite-sample start.
+    const recoveryInputs = [item, mineral.residueCount + 'x kubejs:mineral_residue']
+      .concat(mineral.recoveryInputs)
+    recoveryInputs.push(Fluid.of(mineral.recoveryFluid, mineral.waterAmount))
+    const recoveryRecipe = event.recipes.create.mixing(
+      '2x ' + item,
+      expandMineralIngredients(recoveryInputs)
+    )
+    if (mineral.heat === 'superheated') {
+      recoveryRecipe.superheated()
+    } else {
+      recoveryRecipe.heated()
+    }
+    mineralRecipe(recoveryRecipe, recipePath + 'residue_recovery')
+  })
 })
