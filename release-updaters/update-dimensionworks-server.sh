@@ -130,7 +130,7 @@ try_download() {
         elapsed=$((SECONDS - start_seconds))
         remaining=$((120 - elapsed))
         if [[ "$remaining" -le 0 ]]; then printf '[下载] 首轮总预算 120 秒已用完。\n' >&2; break; fi
-        attempts_left=$(("${#candidates[@]}" - index))
+        attempts_left=$(( ${#candidates[@]} - index ))
         slice=$((remaining / attempts_left))
         [[ "$slice" -ge 1 ]] || slice=1
         printf '[下载] 来源 %d/%d：%s\n' "$((index + 1))" "${#candidates[@]}" "$candidate" >&2

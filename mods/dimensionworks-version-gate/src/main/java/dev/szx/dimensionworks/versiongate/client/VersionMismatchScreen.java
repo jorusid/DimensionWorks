@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.CompletableFuture;
+import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -67,13 +68,8 @@ public final class VersionMismatchScreen extends Screen {
             try {
                 Path updater = downloadUpdater(gameDir);
                 String tag = "v" + serverVersion;
-                ProcessBuilder process;
-                if (isWindows()) {
-                    process = new ProcessBuilder("cmd.exe", "/c", "start", "\"\"", "\"" + updater + "\"",
-                            "--release", tag);
-                } else {
-                    process = new ProcessBuilder("bash", updater.toString(), "--release", tag);
-                }
+                ProcessBuilder process = new ProcessBuilder(
+                        updaterCommand(updater, tag, isWindows()));
                 process.directory(gameDir.toFile()).start();
                 Minecraft.getInstance().execute(() -> Minecraft.getInstance().stop());
             } catch (IOException exception) {
@@ -83,8 +79,7 @@ public final class VersionMismatchScreen extends Screen {
     }
 
     private Path downloadUpdater(Path gameDir) throws IOException {
-        String extension = isWindows() ? "bat" : "sh";
-        String filename = "update-dimensionworks-client." + extension;
+        String filename = updaterFilename(isWindows());
         String baseUrl = "https://github.com/szx-jn/DimensionWorks/releases/download/v"
                 + serverVersion + "/";
         Path destination = gameDir.resolve(filename);
@@ -108,6 +103,17 @@ public final class VersionMismatchScreen extends Screen {
             Files.deleteIfExists(temporary);
             Files.deleteIfExists(checksums);
         }
+    }
+
+    static String updaterFilename(boolean windows) {
+        return "update-dimensionworks-client." + (windows ? "exe" : "sh");
+    }
+
+    static List<String> updaterCommand(Path updater, String tag, boolean windows) {
+        if (windows) {
+            return List.of(updater.toString(), "--release", tag);
+        }
+        return List.of("bash", updater.toString(), "--release", tag);
     }
 
     private static void download(String url, Path destination) throws IOException {

@@ -11,7 +11,10 @@ class ReleaseWorkflowTest(unittest.TestCase):
     def test_workflow_publishes_all_standalone_assets_and_refuses_overwrite(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         required = (
-            "baseline.next_patch",
+            "pack_version.resolve_version",
+            "inputs.release_version",
+            "inputs.dimension_complete",
+            "--dimension-complete",
             "refusing to overwrite it",
             "build_server_delta.py",
             "DimensionWorks-${PACK_VERSION}-update-manifest.tsv",
