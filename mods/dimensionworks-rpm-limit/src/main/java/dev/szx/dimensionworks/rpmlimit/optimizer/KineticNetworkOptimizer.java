@@ -198,7 +198,9 @@ public final class KineticNetworkOptimizer {
         }
 
         NetworkCache after = existingCache(network);
-        if (cacheWasValid && (after == null || !after.stressValid)) {
+        if (!cacheWasValid || after == null || !after.stressValid) {
+            // A member can change speed while the cache is already invalid. Its BlockEntity still
+            // needs to drive the ordinary full recalculation on its next tick.
             if (isBatching()) {
                 queueNetwork(network);
             } else {
