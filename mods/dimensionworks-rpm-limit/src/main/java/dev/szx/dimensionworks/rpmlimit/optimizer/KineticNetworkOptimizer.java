@@ -214,8 +214,10 @@ public final class KineticNetworkOptimizer {
         }
 
         KineticNetwork network = member.getOrCreateNetwork();
+        NetworkCache before = existingCache(network);
+        boolean needsRefresh = before == null || before.stressValid || before.capacityValid;
         invalidate(network);
-        if (isBatching()) {
+        if (isBatching() || !needsRefresh) {
             return;
         }
 
