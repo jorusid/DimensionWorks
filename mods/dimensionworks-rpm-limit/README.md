@@ -32,7 +32,7 @@ RPM Limit 模组承载 KubeJS 齿轮之心的工业额度运行时。物品由 `
 
 Create 容量、Mek 处理和 AE2 提交都在真实输出或提交边界先做完整预检；固定间隔令牌桶按玩家与额度类型隔离，同 tick 的多类请求原子提交，拒绝时不消耗输入或令牌。Create、Mek 和 AE2 白名单最终产物在空间模拟通过后才申请第七项额度。
 
-Mek 直接机械供能接受正反两个方向：有效速度按 `abs(RPM)` 收口，应力按 `abs(RPM) × 8` 计算，零转速不供能。该行为由 `dimensionworks-mek-stress` 的 `MachinePowerMath` 与输出 Mixin 覆盖。
+Mek 直接机械供能接受正反两个方向：有效速度按 `abs(RPM)` 收口，Mekanism 机器应力按 `abs(RPM) × 256` 计算，零转速不供能。该行为由 `dimensionworks-mek-stress` 的 `MachinePowerMath` 与输出 Mixin 覆盖。
 
 ### 配置（COMMON，`[gearHeart]`）
 
