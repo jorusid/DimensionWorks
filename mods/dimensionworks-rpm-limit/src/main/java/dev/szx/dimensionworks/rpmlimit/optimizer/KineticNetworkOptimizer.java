@@ -255,17 +255,23 @@ public final class KineticNetworkOptimizer {
             return;
         }
 
-        // Chunk unloads do not always call Create's network.remove(). Wake one remaining member
-        // so its ordinary tick path rebuilds totals and prunes any stale entries.
+        // Prefer a different live member because a lifecycle hook may be running on a member
+        // that is being removed. If the changed member is still present and is the only one, it
+        // is a valid fallback to drive the ordinary full refresh.
+        KineticBlockEntity fallback = null;
         for (KineticBlockEntity candidate : network.members.keySet()) {
-            if (candidate == member || candidate.getLevel() == null
-                || candidate.getLevel().isClientSide) {
+            if (candidate.getLevel() == null || candidate.getLevel().isClientSide
+                || candidate.getLevel().getBlockEntity(candidate.getBlockPos()) != candidate) {
                 continue;
             }
-            if (candidate.getLevel().getBlockEntity(candidate.getBlockPos()) == candidate) {
+            if (candidate != member) {
                 candidate.networkDirty = true;
-                break;
+                return;
             }
+            fallback = candidate;
+        }
+        if (fallback != null) {
+            fallback.networkDirty = true;
         }
     }
 
