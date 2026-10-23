@@ -536,6 +536,11 @@ def main() -> int:
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIR)
     parser.add_argument("--java", default=None, help="Java executable used only by the Forge installer")
     parser.add_argument("--instance-dir", type=Path, default=DEFAULT_INSTANCE_DIR)
+    parser.add_argument(
+        "--dimension-complete",
+        action="store_true",
+        help="allow an explicit minor version because a dimension was completed",
+    )
     parser.add_argument("--skip-hook", action="store_true", help="skip the packaging preflight")
     parser.add_argument("--skip-build", action="store_true", help="skip in-repo Mod builds")
     parser.add_argument("--verbose", action="store_true", help="print checks, downloads and progress")
@@ -567,6 +572,7 @@ def main() -> int:
             skip_build=args.skip_build,
             verbose=args.verbose,
             requested_version=str(version),
+            dimension_complete=args.dimension_complete,
         )
         if not ok:
             print("PACK-HOOK FAIL")

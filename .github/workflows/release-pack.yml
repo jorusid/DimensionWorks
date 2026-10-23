@@ -111,16 +111,22 @@ jobs:
         env:
           PACK_VERSION: ${{ steps.version.outputs.version }}
           LATEST_TAG: ${{ steps.version.outputs.latest_tag }}
+          DIMENSION_COMPLETE: ${{ inputs.dimension_complete }}
         run: |
           set -euo pipefail
           mkdir -p dist
+          dimension_args=()
+          if [[ "$DIMENSION_COMPLETE" == "true" ]]; then
+            dimension_args+=(--dimension-complete)
+          fi
           python3 scripts/package_server.py \
             --version "$PACK_VERSION" \
             --base-release "${LATEST_TAG:-none}" \
             --instance-dir "$CI_INSTANCE_DIR" \
             --cache-dir "$PACK_CACHE_DIR" \
             --output "dist/DimensionWorks-Server-${PACK_VERSION}.zip" \
-            --manifest-output "dist/DimensionWorks-Server-${PACK_VERSION}-update-manifest.tsv"
+            --manifest-output "dist/DimensionWorks-Server-${PACK_VERSION}-update-manifest.tsv" \
+            "${dimension_args[@]}"
 
       - name: Build server delta
         env:

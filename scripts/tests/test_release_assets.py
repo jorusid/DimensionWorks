@@ -38,6 +38,11 @@ class ReleaseWorkflowTest(unittest.TestCase):
         self.assertIn("Updater script embedded in server package", text)
         self.assertIn("cmp \"dist/DimensionWorks-${PACK_VERSION}-update-manifest.tsv\"", text)
 
+    def test_server_packager_supports_explicit_minor_release(self) -> None:
+        text = (ROOT / "scripts" / "package_server.py").read_text(encoding="utf-8")
+        self.assertIn('"--dimension-complete"', text)
+        self.assertIn("dimension_complete=args.dimension_complete", text)
+
 
 if __name__ == "__main__":
     unittest.main()
