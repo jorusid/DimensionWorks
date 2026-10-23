@@ -387,7 +387,7 @@ class ShellServerFixtureTest(unittest.TestCase):
             )
             first = fixture.write_server_package(
                 version="0.0.8",
-                files={"config/value.cfg": b"old", "config/custom.cfg": b"original"},
+                files={"mods/value.jar": b"old", "config/custom.cfg": b"original"},
             )
             result = subprocess.run(
                 ["bash", str(instance / "update-dimensionworks-server.sh"), "--package", str(first)],
@@ -401,7 +401,7 @@ class ShellServerFixtureTest(unittest.TestCase):
 
             second = fixture.write_server_package(
                 version="0.0.9",
-                files={"config/value.cfg": b"new", "config/custom.cfg": b"original"},
+                files={"mods/value.jar": b"new", "config/custom.cfg": b"original"},
                 base="v0.0.8",
             )
             delta = Path(temp) / "DimensionWorks-Server-0.0.9-delta.zip"
@@ -436,7 +436,7 @@ class ShellServerFixtureTest(unittest.TestCase):
                 server.server_close()
                 thread.join(timeout=2)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual((instance / "config" / "value.cfg").read_bytes(), b"new")
+            self.assertEqual((instance / "mods" / "value.jar").read_bytes(), b"new")
             self.assertEqual((instance / "config" / "custom.cfg").read_bytes(), b"user custom")
             self.assertEqual((instance / "VERSION").read_text(), "0.0.9\n")
             self.assertIn("/" + manifest.name, requested)
