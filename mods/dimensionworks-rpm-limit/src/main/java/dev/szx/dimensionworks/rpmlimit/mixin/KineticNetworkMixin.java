@@ -55,38 +55,34 @@ public abstract class KineticNetworkMixin {
         }
     }
 
-    @Inject(method = "updateCapacityFor", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(
+        method = "updateCapacityFor",
+        at = @At(
+            value = "INVOKE",
+            target = "Lcom/simibubi/create/content/kinetics/KineticNetwork;updateCapacity()V",
+            shift = At.Shift.BEFORE
+        ),
+        remap = false
+    )
     private void dimensionworks$updateCapacityIncrementally(KineticBlockEntity be, float capacity,
                                                             CallbackInfo ci) {
-        KineticNetwork self = (KineticNetwork) (Object) this;
-        self.sources.put(be, capacity);
-        KineticNetworkOptimizer.updateCapacityContribution(self, be);
-
-        if (KineticNetworkOptimizer.isBatching()) {
-            KineticNetworkOptimizer.queueNetwork(self);
-            ci.cancel();
-            return;
-        }
-
-        self.updateCapacity();
-        ci.cancel();
+        // Create has already written the new base capacity into sources at this point.
+        KineticNetworkOptimizer.updateCapacityContribution((KineticNetwork) (Object) this, be);
     }
 
-    @Inject(method = "updateStressFor", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(
+        method = "updateStressFor",
+        at = @At(
+            value = "INVOKE",
+            target = "Lcom/simibubi/create/content/kinetics/KineticNetwork;updateStress()V",
+            shift = At.Shift.BEFORE
+        ),
+        remap = false
+    )
     private void dimensionworks$updateStressIncrementally(KineticBlockEntity be, float stress,
                                                           CallbackInfo ci) {
-        KineticNetwork self = (KineticNetwork) (Object) this;
-        self.members.put(be, stress);
-        KineticNetworkOptimizer.updateStressContribution(self, be);
-
-        if (KineticNetworkOptimizer.isBatching()) {
-            KineticNetworkOptimizer.queueNetwork(self);
-            ci.cancel();
-            return;
-        }
-
-        self.updateStress();
-        ci.cancel();
+        // Create has already written the new base stress into members at this point.
+        KineticNetworkOptimizer.updateStressContribution((KineticNetwork) (Object) this, be);
     }
 
     @Inject(method = "updateCapacity", at = @At("HEAD"), cancellable = true, remap = false)
