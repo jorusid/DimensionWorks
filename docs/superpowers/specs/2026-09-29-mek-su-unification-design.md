@@ -11,19 +11,19 @@
 - 合格 MEK 机器不再读取、换算或接收 FE。内部配方系统在有有效机械动力时看到满能量，无有效机械动力时看到零能量。
 - 合格 MEK 机器在每个服务端 tick 向真实 `MachineEnergyContainer` 补充最多 `20,000,000 J`（20,000 kJ）；网络停止、SU 不足或 Create 网络过载时清零。充能器使用同一供能判定。
 - 机器扫描主机与全部 Mekanism `AttributeHasBounding` 占位方块的外表面。任意相邻 `KineticBlockEntity` 只要其轴朝向其中一面，就可以提供该元件所在的 Create 网络；`3x2x2` 等非立方单方块机器不会因主机侧面被自身包围方块占据而断线。
-- 每台机器对应一个虚拟 `KineticBlockEntity` 成员，并插入实际 `KineticNetwork.members`。网络按虚拟成员的理论 RPM 计算 `RPM × 8` 应力，因此原版 Create 应力统计、齿轮箱需求扫描和过载状态都能看到机器负载。
-- 齿轮箱不依赖下游机器决定是否启动。空载时使用 `有效 RPM × 8` 的基础负载；接入机器后，SU 需求取基础负载与下游实际完整应力负载的较大值。
+- 每台机器对应一个虚拟 `KineticBlockEntity` 成员，并插入实际 `KineticNetwork.members`。网络按虚拟成员的理论 RPM 计算 `RPM × 256` 应力，因此原版 Create 应力统计、齿轮箱需求扫描和过载状态都能看到机器负载。
+- 齿轮箱不依赖下游机器决定是否启动。空载时使用 `有效 RPM × 8` 的齿轮箱基础负载；接入机器后，SU 需求取基础负载与下游实际完整应力负载的较大值。
 - 机器能量是二元值：网络支付当前 RPM 对应的 SU 时保持满能量；SU 不足、路线停止或 Create 网络过载时为零。有效 RPM 低于机器目标 RPM 时仍为满能量，但工作速度按 `min(1, 有效 RPM / 目标 RPM)` 缩放。
 - 有效 RPM 高于目标 RPM 时，生产倍率按 `有效 RPM / 目标 RPM` 计算，并在 Mekanism 输出边界统一作用于物品、气体、流体、复合输出和随机副产物；每个逻辑产物先按该 tick 的实际操作次数求和，再乘倍率并向下取整。
-- 四档目标 RPM 为基础 `1024`、高级 `2048`、精英 `4096`、终极 `8192`。每台机器按自身当前 RPM 向对应 Create 网络施加 `RPM × 8` 的应力需求。
-- 单台标准机器仍对应每 RPM `8` SU；多台机器只放大齿轮箱的 SU 负载，不重复累计 RPM。
+- 四档目标 RPM 为基础 `1024`、高级 `2048`、精英 `4096`、终极 `8192`。每台机器按自身当前 RPM 向对应 Create 网络施加 `RPM × 256` 的应力需求。
+- 单台标准机器仍对应每 RPM `256` SU；多台机器只放大齿轮箱的 SU 负载，不重复累计 RPM。
 - ME Gearbox IMPORT 仍把 Create 应力存入 AE；ME Gearbox EXPORT 从 AE 输出应力，并执行严格 SU 守恒。
 - Applied Create 原有的 `stress_output_card`、AE 输出总线路由和相关 Jade 总线显示保持退役。
 
 ## 网络计算
 
 ```text
-idleLoad       = effectiveRpm * 8
+idleLoad       = effectiveRpm * 256
 fullLoad       = max(idleLoad, Create 网络完整应力负载)
 requestedSu    = ceil(fullLoad)
 rpmQ           = min(1, bandwidthRpm / requestedRpm)
@@ -60,7 +60,7 @@ perRpmCapacity = chargedSu / outputRpm
 
 - 所有 `TileEntityMekanism` 的 Mekanism Jade 能量元素必须移除，不再显示 FE/J。
 - Jade 通用 FE/J provider 对 `TileEntityMekanism` 的服务端数据和客户端 tooltip 都必须取消。
-- 本 Mod 的 MEK Jade 条目显示 Create 路线、当前有效 RPM、`RPM × 8` 的 SU/t 占用和工作倍率。
+- 本 Mod 的 MEK Jade 条目显示 Create 路线、当前有效 RPM、`RPM × 256` 的 SU/t 占用和工作倍率。
 - Jade 的生产倍率显示端到端吞吐倍率；低于目标时显示小于 `1x` 的实际工作速度，高于目标时显示配方放大后的吞吐倍率。
 - 非加工 MEK 设备不显示本 Mod 的机械动力条目。
 
