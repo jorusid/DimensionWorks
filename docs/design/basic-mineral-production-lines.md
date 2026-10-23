@@ -33,7 +33,7 @@
 | mekanism:raw_lead | 1× mekanism:raw_lead；2× minecraft:gravel；1× minecraft:flint；1× minecraft:iron_ingot | 1× mekanism:raw_lead；2× minecraft:flint | 1× mekanism:raw_lead；2× kubejs:mineral_residue；1× minecraft:iron_ingot；1× minecraft:gravel；1× minecraft:flint；500 mB minecraft:water | 加热 |
 | mekanism:raw_osmium | 1× mekanism:raw_osmium；2× minecraft:deepslate；1× minecraft:iron_ingot；1× minecraft:quartz | 1× mekanism:raw_osmium；2× create:brass_ingot | 1× mekanism:raw_osmium；3× kubejs:mineral_residue；1× minecraft:iron_ingot；1× minecraft:deepslate；1× minecraft:quartz；500 mB minecraft:water | 加热 |
 | mekanism:raw_uranium | 1× mekanism:raw_uranium；2× minecraft:basalt；1× minecraft:gunpowder；1× minecraft:quartz | 1× mekanism:raw_uranium；4× minecraft:gunpowder | 1× mekanism:raw_uranium；4× kubejs:mineral_residue；1× minecraft:basalt；1× minecraft:gunpowder；1× minecraft:quartz；1000 mB minecraft:water | 超级加热 |
-| mekanism:fluorite | 1× mekanism:fluorite；2× minecraft:basalt；1× minecraft:calcite；1× minecraft:glowstone_dust | 1× mekanism:fluorite；2× minecraft:lapis_lazuli | 1× mekanism:fluorite；3× kubejs:mineral_residue；1× minecraft:calcite；1× minecraft:glowstone_dust；500 mB minecraft:water | 加热 |
+| mekanism:fluorite_gem | 1× mekanism:fluorite_gem；2× minecraft:basalt；1× minecraft:calcite；1× minecraft:glowstone_dust | 1× mekanism:fluorite_gem；2× minecraft:lapis_lazuli | 1× mekanism:fluorite_gem；3× kubejs:mineral_residue；1× minecraft:calcite；1× minecraft:glowstone_dust；500 mB minecraft:water | 加热 |
 
 ## 配方 ID 规范
 
