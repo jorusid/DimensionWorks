@@ -37,7 +37,9 @@ public abstract class CraftingCpuLogicMixin {
 
         var cluster = ((CraftingCpuLogicClusterAccessor) (Object) self)
             .dimensionworks$getCluster();
-        var owner = AeCraftingRegistry.owner(cluster == null ? null : cluster.getNode());
+        var node = cluster == null ? null : cluster.getNode();
+        var grid = node == null ? null : node.getGrid();
+        var owner = AeCraftingRegistry.owner(grid == null ? null : grid.getPivot());
         long tick = cluster == null || cluster.getLevel() == null
             ? 0L : cluster.getLevel().getGameTime();
         if (!AeCraftingGate.allowFinalOutput(owner, what, deliverable, tick)) {

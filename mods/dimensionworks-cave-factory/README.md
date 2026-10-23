@@ -50,6 +50,8 @@
 - `FactoryMachineBlockEntity#phase()`：机器相位状态。
 - `FluidStabilizerBlockEntity`：通用 4:1 稳定化接口。
 
+流体稳定器在输出空间检查后、消耗流体前申请 `gear_heart:final_production` 额度；额度不足时整批不开始，不产生部分流体扣除。该接口使用仅暴露 `ItemStack` 的 `FinalProductionGate#tryConsumeItem`，不会把 Mekanism 类型泄漏到 Cave Factory 的编译边界。
+
 ## 构建
 
 ```sh

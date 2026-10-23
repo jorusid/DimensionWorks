@@ -53,16 +53,6 @@ public abstract class KineticBlockEntityMixin {
     }
 
     /**
-     * The extra batches cost extra stress, otherwise over-speeding would be free throughput.
-     */
-    @Inject(method = "calculateStressApplied", at = @At("RETURN"), cancellable = true, remap = false)
-    private void dimensionworks$overspeedStress(CallbackInfoReturnable<Float> cir) {
-        float multiplier = OverspeedBonus.stressMultiplier((KineticBlockEntity) (Object) this);
-        if (multiplier > 1)
-            cir.setReturnValue(cir.getReturnValueF() * multiplier);
-    }
-
-    /**
      * Appends the overspeed line to the goggles readout, after Create's own lines.
      *
      * <p>The renderer drops the last line again when this method reports "no information" while

@@ -3,6 +3,7 @@ package dev.szx.dimensionworks.mekstress.memory;
 import com.simibubi.create.content.kinetics.KineticNetwork;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import dev.szx.dimensionworks.mekstress.core.MachinePowerMath;
+import dev.szx.dimensionworks.rpmlimit.api.IPreclampedKineticSpeed;
 import java.lang.ref.WeakReference;
 import mekanism.common.tile.base.TileEntityMekanism;
 import net.minecraft.core.BlockPos;
@@ -17,7 +18,8 @@ import org.jetbrains.annotations.Nullable;
  * fixed superclass. Create's network type is still KineticBlockEntity-based, so this adapter
  * exposes the machine's rotational load and speed while keeping only a weak reference to it.</p>
  */
-public final class MachineKineticMember extends KineticBlockEntity implements IVirtualKineticMember {
+public final class MachineKineticMember extends KineticBlockEntity
+    implements IVirtualKineticMember, IPreclampedKineticSpeed {
     private final WeakReference<TileEntityMekanism> machine;
     private final BlockPos fallbackPos;
     private final BlockState fallbackState;

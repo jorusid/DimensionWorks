@@ -33,21 +33,21 @@ side="BOTH"
 [[dependencies.dimensionworks_mek_stress]]
 modId="mekanism"
 mandatory=true
-versionRange="[10.4.16,10.5)"
+versionRange="[10.4.16.80,10.4.16.81)"
 ordering="AFTER"
 side="BOTH"
 
 [[dependencies.dimensionworks_mek_stress]]
 modId="ae2"
 mandatory=true
-versionRange="[15.4.10,15.5)"
+versionRange="[15.4.10,15.4.11)"
 ordering="AFTER"
 side="BOTH"
 
 [[dependencies.dimensionworks_mek_stress]]
 modId="appliedcreate"
 mandatory=true
-versionRange="[1.1.5,1.2)"
+versionRange="[1.1.5,1.1.6)"
 ordering="AFTER"
 side="BOTH"
 

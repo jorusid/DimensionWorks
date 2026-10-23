@@ -23,7 +23,9 @@ public abstract class ValueSettingsPacketMixin {
         remap = false
     )
     private void dimensionworks$assignControllerOwner(ServerPlayer player, SmartBlockEntity be, CallbackInfo ci) {
-        if (be instanceof SpeedControllerBlockEntity controller)
+        if (be instanceof SpeedControllerBlockEntity controller
+            && RpmLimitManager.owner(controller) == null) {
             RpmLimitManager.setOwner(controller, player.getUUID());
+        }
     }
 }

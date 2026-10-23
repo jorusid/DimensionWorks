@@ -28,7 +28,7 @@ side="BOTH"
 [[dependencies.dimensionworks_cave_factory]]
 modId="dimensionworks_rpm_limit"
 mandatory=true
-versionRange="[0.4.4,1.0)"
+versionRange="[0.4.6,1.0)"
 ordering="AFTER"
 side="BOTH"
 [[dependencies.dimensionworks_cave_factory]]

@@ -27,6 +27,16 @@ class KineticNetworkMixinContractTest {
         assertFalse(source.contains(".calculateCapacity())"));
     }
 
+    @Test
+    void overspeedStressIsAppliedAtTheActualStressBoundary() throws IOException {
+        String network = Files.readString(Path.of(SOURCE_PATH));
+        String blockEntity = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/rpmlimit/mixin/KineticBlockEntityMixin.java"));
+
+        assertTrue(network.contains("OverspeedBonus.stressMultiplier(be)"));
+        assertFalse(blockEntity.contains("dimensionworks$overspeedStress"));
+    }
+
     private static int occurrences(String source, String needle) {
         int count = 0;
         int offset = 0;

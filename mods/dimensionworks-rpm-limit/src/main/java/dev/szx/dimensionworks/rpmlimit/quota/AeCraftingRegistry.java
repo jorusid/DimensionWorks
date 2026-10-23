@@ -3,24 +3,25 @@ package dev.szx.dimensionworks.rpmlimit.quota;
 import appeng.api.features.IPlayerRegistry;
 import appeng.api.networking.IGridNode;
 import appeng.me.service.CraftingService;
+import dev.szx.dimensionworks.rpmlimit.mixin.ae2.CraftingServiceAccessor;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.Collections;
-import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.UUID;
 
 /** Weak registry of live AE2 crafting services and their grid owners. */
 public final class AeCraftingRegistry {
-    private static final Map<CraftingService, UUID> SERVICES =
-        Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Set<CraftingService> SERVICES =
+        Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
     private AeCraftingRegistry() {
     }
 
-    public static void register(CraftingService service, UUID owner) {
-        if (service != null && owner != null) {
-            SERVICES.put(service, GearHeartOwnerResolver.normalize(owner));
+    public static void register(CraftingService service) {
+        if (service != null) {
+            SERVICES.add(service);
         }
     }
 
@@ -45,11 +46,9 @@ public final class AeCraftingRegistry {
         if (service == null) {
             return GearHeartOwnerResolver.SHARED_OWNER;
         }
-        UUID registered;
-        synchronized (SERVICES) {
-            registered = SERVICES.get(service);
-        }
-        return registered == null ? GearHeartOwnerResolver.SHARED_OWNER : registered;
+        appeng.api.networking.IGrid grid =
+            ((CraftingServiceAccessor) (Object) service).dimensionworks$getGrid();
+        return owner(grid == null ? null : grid.getPivot());
     }
 
     public static int busyCount(UUID owner) {
@@ -58,11 +57,11 @@ public final class AeCraftingRegistry {
         }
         int count = 0;
         synchronized (SERVICES) {
-            for (Map.Entry<CraftingService, UUID> entry : SERVICES.entrySet()) {
-                if (!owner.equals(entry.getValue())) {
+            for (CraftingService service : SERVICES) {
+                if (!owner.equals(owner(service))) {
                     continue;
                 }
-                count += busyCpus(entry.getKey());
+                count += busyCpus(service);
             }
         }
         return count;

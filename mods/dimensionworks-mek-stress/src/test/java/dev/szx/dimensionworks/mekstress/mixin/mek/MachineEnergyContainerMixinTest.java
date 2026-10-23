@@ -3,6 +3,9 @@ package dev.szx.dimensionworks.mekstress.mixin.mek;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -25,5 +28,13 @@ class MachineEnergyContainerMixinTest {
         assertTrue(injectedTargets.contains("isEmpty"));
         assertTrue(injectedTargets.contains("extract"));
         assertTrue(injectedTargets.contains("insert"));
+    }
+
+    @Test
+    void clientSideReadsKeepMekanismEnergyValues() throws IOException {
+        String source = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/mekstress/mixin/mek/MachineEnergyContainerMixin.java"));
+
+        assertTrue(source.contains("dimensionworks$serverMachineTile()"));
     }
 }

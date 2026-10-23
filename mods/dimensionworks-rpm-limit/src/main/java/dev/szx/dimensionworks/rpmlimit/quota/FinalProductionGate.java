@@ -31,6 +31,11 @@ public final class FinalProductionGate {
         return consume(owner, amount, tick);
     }
 
+    /** Item-only entry point for self-owned mods that do not depend on Mekanism. */
+    public static boolean tryConsumeItem(UUID owner, ItemStack output, long amount, long tick) {
+        return tryConsume(owner, output, amount, tick);
+    }
+
     public static boolean tryConsume(UUID owner, FluidStack output, long amount, long tick) {
         if (amount <= 0L || output == null || output.isEmpty()
             || !output.getFluid().is(TagKey.create(

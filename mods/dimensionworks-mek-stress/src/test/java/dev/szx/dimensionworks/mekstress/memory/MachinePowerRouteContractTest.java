@@ -63,12 +63,14 @@ class MachinePowerRouteContractTest {
             "src/main/java/dev/szx/dimensionworks/mekstress/mixin/create/KineticNetworkMixin.java"));
 
         assertTrue(registry.contains("network.members.put("));
+        assertTrue(registry.contains("flushDirtyNetworks"));
         assertTrue(registry.contains("network.updateNetwork()"));
         assertTrue(registry.contains("boolean wasAttached = network.members.containsKey(member);"));
         assertTrue(registry.contains("boolean topologyChanged = previous != network || !wasAttached;"));
         assertTrue(registry.contains("if (topologyChanged)"));
         assertTrue(member.contains("extends KineticBlockEntity"));
         assertTrue(member.contains("IVirtualKineticMember"));
+        assertTrue(member.contains("IPreclampedKineticSpeed"));
         assertTrue(member.contains("calculateStressApplied()"));
         assertTrue(networkMixin.contains("IVirtualKineticMember"));
         assertTrue(networkMixin.contains("calculateStress"));

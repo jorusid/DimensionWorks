@@ -43,6 +43,18 @@ class AeMixinContractTest {
         assertEquals(1, occurrences(source, "\"ae2.CraftingCpuLogicMixin\""));
     }
 
+    @Test
+    void craftingOwnershipResolvesFromTheCurrentGridPivot() throws IOException {
+        String registry = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/rpmlimit/quota/AeCraftingRegistry.java"));
+        String serviceMixin = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/rpmlimit/mixin/ae2/CraftingServiceMixin.java"));
+
+        assertTrue(registry.contains("CraftingServiceAccessor"));
+        assertTrue(registry.contains("grid.getPivot()"));
+        assertTrue(serviceMixin.contains("AeCraftingRegistry.register(service)"));
+    }
+
     private static int occurrences(String source, String needle) {
         int count = 0;
         int offset = 0;

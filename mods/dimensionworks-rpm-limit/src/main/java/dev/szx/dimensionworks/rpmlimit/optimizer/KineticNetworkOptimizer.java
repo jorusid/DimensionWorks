@@ -2,6 +2,7 @@ package dev.szx.dimensionworks.rpmlimit.optimizer;
 
 import com.simibubi.create.content.kinetics.KineticNetwork;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
+import dev.szx.dimensionworks.rpmlimit.DimensionWorksRpmLimit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -346,7 +347,23 @@ public final class KineticNetworkOptimizer {
         List<KineticNetwork> pending = new ArrayList<>(batch.dirtyNetworks);
         BATCH.remove();
         for (KineticNetwork network : pending) {
-            network.updateNetwork();
+            try {
+                network.updateNetwork();
+            } catch (RuntimeException exception) {
+                DimensionWorksRpmLimit.LOGGER.warn(
+                    "Failed to refresh one kinetic network; continuing with remaining networks.",
+                    exception);
+            }
+        }
+    }
+
+    /** Clears a batch leaked by an exception in third-party kinetic code. */
+    public static void abortBatch() {
+        Batch batch = BATCH.get();
+        if (batch.depth > 0) {
+            batch.depth = 0;
+            batch.dirtyNetworks.clear();
+            BATCH.remove();
         }
     }
 

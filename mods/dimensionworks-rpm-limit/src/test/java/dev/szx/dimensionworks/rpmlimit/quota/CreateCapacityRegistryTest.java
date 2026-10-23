@@ -1,7 +1,11 @@
 package dev.szx.dimensionworks.rpmlimit.quota;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -50,5 +54,22 @@ class CreateCapacityRegistryTest {
             raw, ownerA, 9000.0F, 0, 5000.0, 0.0));
         assertEquals(1096.0F, CreateCapacityRegistry.applyOwnerQuota(
             raw, ownerA, 9000.0F, 0, 4096.0, 3000.0));
+    }
+
+    @Test
+    void clearRemovedKeepsActiveNetworksAndDropsUnloadedNetworks() {
+        assertTrue(CreateCapacityRegistry.shouldRetainNetwork(true));
+        assertFalse(CreateCapacityRegistry.shouldRetainNetwork(false));
+    }
+
+    @Test
+    void mixedOwnerNetworksAggregateSourcesByOwner() throws Exception {
+        String source = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/rpmlimit/quota/CreateCapacityRegistry.java"));
+
+        assertTrue(source.contains("Map<KineticNetwork, Map<UUID, Double>> SAMPLES"));
+        assertTrue(source.contains("ownerCapacities(network, naturalCapacity)"));
+        assertTrue(source.contains("network.getActualCapacityOf(source)"));
+        assertFalse(source.contains("UUID owner = GearHeartOwnerResolver.owner(member)"));
     }
 }

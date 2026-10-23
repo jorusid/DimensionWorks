@@ -3,6 +3,7 @@ package dev.szx.dimensionworks.rpmlimit.mixin;
 import com.simibubi.create.content.kinetics.KineticNetwork;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import dev.szx.dimensionworks.rpmlimit.RpmLimitManager;
+import dev.szx.dimensionworks.rpmlimit.OverspeedBonus;
 import dev.szx.dimensionworks.rpmlimit.optimizer.KineticNetworkOptimizer;
 import dev.szx.dimensionworks.rpmlimit.quota.CreateCapacityRegistry;
 import org.spongepowered.asm.mixin.Mixin;
@@ -40,9 +41,8 @@ public abstract class KineticNetworkMixin {
                                                      CallbackInfoReturnable<Float> cir) {
         float raw = be.getTheoreticalSpeed();
         float scale = RpmLimitManager.effectiveScale(be, raw);
-        if (scale < 1) {
-            cir.setReturnValue(cir.getReturnValueF() * scale);
-        }
+        float multiplier = OverspeedBonus.stressMultiplier(be);
+        cir.setReturnValue(cir.getReturnValueF() * scale * multiplier);
     }
 
     @Inject(method = "getActualCapacityOf", at = @At("RETURN"), cancellable = true, remap = false)

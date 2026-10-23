@@ -10,6 +10,7 @@ import dev.szx.dimensionworks.mekstress.core.MachineFootprint;
 import dev.szx.dimensionworks.mekstress.core.MachineTier;
 import dev.szx.dimensionworks.mekstress.core.PowerRouteSafety;
 import dev.szx.dimensionworks.mekstress.core.MechanicalCharge;
+import dev.szx.dimensionworks.mekstress.core.MachinePowerRouteScope;
 import dev.szx.dimensionworks.rpmlimit.RpmLimitManager;
 import java.util.List;
 import java.util.Map;
@@ -106,6 +107,10 @@ public final class MachinePowerManager {
         if (level == null || level.isClientSide) {
             return null;
         }
+        DirectSource scoped = MachinePowerRouteScope.current(tile);
+        if (scoped != null) {
+            return scoped;
+        }
 
         DirectSource best = null;
         Map<BlockPos, List<Direction>> candidates = MachineFootprint.kineticCandidates(
@@ -183,7 +188,7 @@ public final class MachinePowerManager {
         if (effectiveRpm <= 0) {
             return new GearboxDemand(0, 0L, 0.0D);
         }
-        double fullSpeedLoad = MachinePowerMath.gearboxLoad(downstreamLoad(gearbox, effectiveRpm), effectiveRpm);
+        double fullSpeedLoad = MachinePowerMath.gearboxLoad(downstreamLoad(gearbox), effectiveRpm);
         return new GearboxDemand(effectiveRpm, (long) Math.ceil(fullSpeedLoad), fullSpeedLoad);
     }
 
@@ -227,7 +232,7 @@ public final class MachinePowerManager {
         return candidate.networkRpm() > current.networkRpm();
     }
 
-    private static double downstreamLoad(MEGearboxBlockEntity gearbox, int effectiveRpm) {
+    private static double downstreamLoad(MEGearboxBlockEntity gearbox) {
         if (!gearbox.hasNetwork()) {
             return 0.0D;
         }
@@ -236,20 +241,10 @@ public final class MachinePowerManager {
             return 0.0D;
         }
         double load = 0.0D;
-        for (var entry : network.members.entrySet()) {
-            load += Math.max(0.0F, entry.getValue()) * effectiveMemberRpm(entry.getKey(), effectiveRpm);
+        for (KineticBlockEntity member : network.members.keySet()) {
+            load += Math.max(0.0D, network.getActualStressOf(member));
         }
         return load;
-    }
-
-    private static float effectiveMemberRpm(KineticBlockEntity member, int networkRpm) {
-        if (networkRpm <= 0) {
-            return 0.0F;
-        }
-        if (member instanceof IVirtualKineticMember) {
-            return Math.max(0.0F, Math.abs(networkRpm));
-        }
-        return Math.max(0.0F, Math.abs(RpmLimitManager.clamp(member, networkRpm)));
     }
 
     private static boolean shaftFacesMachine(Level level, KineticBlockEntity kinetic, Direction machineToKinetic) {

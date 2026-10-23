@@ -10,6 +10,7 @@ import dev.szx.dimensionworks.mekstress.core.MemoryTier;
 import dev.szx.dimensionworks.mekstress.memory.MemoryDriveMenu;
 import dev.szx.dimensionworks.mekstress.memory.MemoryGridService;
 import dev.szx.dimensionworks.mekstress.memory.MemoryLegacyMigration;
+import dev.szx.dimensionworks.mekstress.memory.MachineKineticRegistry;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -35,10 +36,13 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Mod(DimensionWorksMekStress.MOD_ID)
 public final class DimensionWorksMekStress {
     public static final String MOD_ID = "dimensionworks_mek_stress";
+    public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MOD_ID);
     private static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MOD_ID);
@@ -107,10 +111,13 @@ public final class DimensionWorksMekStress {
         MinecraftForge.EVENT_BUS.addListener(MemoryCardCraftingHandler::onItemCrafted);
         MinecraftForge.EVENT_BUS.addListener(MemoryLegacyMigration::onMissingMappings);
         MinecraftForge.EVENT_BUS.addListener(MemoryLegacyMigration::onServerStarted);
+        MinecraftForge.EVENT_BUS.addListener(MemoryLegacyMigration::onServerStopping);
         MinecraftForge.EVENT_BUS.addListener(MemoryLegacyMigration::onServerTick);
         MinecraftForge.EVENT_BUS.addListener(MemoryLegacyMigration::onChunkLoad);
         MinecraftForge.EVENT_BUS.addListener(MemoryLegacyMigration::onEntityJoin);
         MinecraftForge.EVENT_BUS.addListener(MemoryLegacyMigration::onEntityLeave);
+        MinecraftForge.EVENT_BUS.addListener(MachineKineticRegistry::onServerTick);
+        MinecraftForge.EVENT_BUS.addListener(MachineKineticRegistry::onServerStopping);
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

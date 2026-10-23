@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class MachineEnergyContainerMixin {
     @Inject(method = "getEnergy", at = @At("HEAD"), cancellable = true, remap = false)
     private void dimensionworks$getMechanicalEnergy(CallbackInfoReturnable<FloatingLong> cir) {
-        TileEntityMekanism tile = dimensionworks$machineTile();
+        TileEntityMekanism tile = dimensionworks$serverMachineTile();
         if (tile == null || !StressRules.isEligible(tile)) {
             return;
         }
@@ -27,7 +27,7 @@ public abstract class MachineEnergyContainerMixin {
 
     @Inject(method = "isEmpty", at = @At("HEAD"), cancellable = true, remap = false)
     private void dimensionworks$isMechanicallyEmpty(CallbackInfoReturnable<Boolean> cir) {
-        TileEntityMekanism tile = dimensionworks$machineTile();
+        TileEntityMekanism tile = dimensionworks$serverMachineTile();
         if (tile != null && StressRules.isEligible(tile)) {
             cir.setReturnValue(!MachinePowerManager.hasMechanicalPower(tile));
         }
@@ -36,7 +36,7 @@ public abstract class MachineEnergyContainerMixin {
     @Inject(method = "insert", at = @At("HEAD"), cancellable = true, remap = false)
     private void dimensionworks$rejectFe(FloatingLong amount, Action action, AutomationType automationType,
                                          CallbackInfoReturnable<FloatingLong> cir) {
-        TileEntityMekanism tile = dimensionworks$machineTile();
+        TileEntityMekanism tile = dimensionworks$serverMachineTile();
         if (tile != null && StressRules.isEligible(tile)) {
             cir.setReturnValue(amount);
         }
@@ -45,7 +45,7 @@ public abstract class MachineEnergyContainerMixin {
     @Inject(method = "extract", at = @At("HEAD"), cancellable = true, remap = false)
     private void dimensionworks$extractMechanicalEnergy(FloatingLong amount, Action action, AutomationType automationType,
                                                        CallbackInfoReturnable<FloatingLong> cir) {
-        TileEntityMekanism tile = dimensionworks$machineTile();
+        TileEntityMekanism tile = dimensionworks$serverMachineTile();
         if (tile == null || !StressRules.isEligible(tile) || amount.isZero()) {
             return;
         }
@@ -60,5 +60,12 @@ public abstract class MachineEnergyContainerMixin {
         return this instanceof MachineEnergyContainerAccessor accessor
             ? accessor.dimensionworks$machineTile()
             : null;
+    }
+
+    private TileEntityMekanism dimensionworks$serverMachineTile() {
+        TileEntityMekanism tile = dimensionworks$machineTile();
+        return tile == null || tile.getLevel() == null || tile.getLevel().isClientSide
+            ? null
+            : tile;
     }
 }

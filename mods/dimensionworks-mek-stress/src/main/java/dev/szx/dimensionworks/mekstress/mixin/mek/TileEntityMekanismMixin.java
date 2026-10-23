@@ -2,6 +2,7 @@ package dev.szx.dimensionworks.mekstress.mixin.mek;
 
 import dev.szx.dimensionworks.mekstress.core.WorkScheduler;
 import dev.szx.dimensionworks.mekstress.core.MachineWorkContext;
+import dev.szx.dimensionworks.mekstress.core.MachinePowerRouteScope;
 import dev.szx.dimensionworks.mekstress.memory.MachinePowerManager;
 import dev.szx.dimensionworks.mekstress.memory.StressRules;
 import mekanism.common.tile.base.TileEntityMekanism;
@@ -17,6 +18,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class TileEntityMekanismMixin {
     @Unique
     private boolean dimensionworks$repeatingUpdate;
+    @Unique
+    private WorkScheduler.Advance dimensionworks$workAdvance;
 
     @Inject(method = "onUpdateServer", at = @At("HEAD"), cancellable = true, remap = false)
     private void dimensionworks$scheduleMechanicalWork(CallbackInfo ci) {
@@ -34,28 +37,31 @@ public abstract class TileEntityMekanismMixin {
 
         long tick = level.getGameTime();
         MachinePowerManager.DirectSource route = MachinePowerManager.powerRoute(self);
-        MachinePowerManager.updateDirectStress(self, route);
-        MachinePowerManager.updateMechanicalEnergy(self, route);
+        try (MachinePowerRouteScope.Scope ignored = MachinePowerRouteScope.push(self, route)) {
+            MachinePowerManager.updateDirectStress(self, route);
+            MachinePowerManager.updateMechanicalEnergy(self, route);
 
-        double workRate = MachinePowerManager.workRate(self, route);
-        int calls = WorkScheduler.callsForRate(workRate, tick);
-        if (calls <= 0) {
-            ci.cancel();
-            return;
-        }
-        if (calls == 1) {
-            return;
-        }
-
-        ci.cancel();
-        dimensionworks$repeatingUpdate = true;
-        try {
-            TileEntityMekanismInvoker invoker = (TileEntityMekanismInvoker) this;
-            for (int i = 0; i < calls; i++) {
-                invoker.dimensionworks$onUpdateServer();
+            double workRate = MachinePowerManager.workRate(self, route);
+            dimensionworks$workAdvance = WorkScheduler.advance(workRate, tick, dimensionworks$workAdvance);
+            int calls = dimensionworks$workAdvance.calls();
+            if (calls <= 0) {
+                ci.cancel();
+                return;
             }
-        } finally {
-            dimensionworks$repeatingUpdate = false;
+            if (calls == 1) {
+                return;
+            }
+
+            ci.cancel();
+            dimensionworks$repeatingUpdate = true;
+            try {
+                TileEntityMekanismInvoker invoker = (TileEntityMekanismInvoker) this;
+                for (int i = 0; i < calls; i++) {
+                    invoker.dimensionworks$onUpdateServer();
+                }
+            } finally {
+                dimensionworks$repeatingUpdate = false;
+            }
         }
     }
 
@@ -81,6 +87,11 @@ public abstract class TileEntityMekanismMixin {
     }
     @Inject(method = "blockRemoved", at = @At("HEAD"), remap = false)
     private void dimensionworks$clearRemovedBlock(CallbackInfo ci) {
+        MachinePowerManager.clearForRemoval((TileEntityMekanism) (Object) this);
+    }
+
+    @Inject(method = "setRemoved", at = @At("HEAD"), remap = true)
+    private void dimensionworks$clearUnloadedBlock(CallbackInfo ci) {
         MachinePowerManager.clearForRemoval((TileEntityMekanism) (Object) this);
     }
 }

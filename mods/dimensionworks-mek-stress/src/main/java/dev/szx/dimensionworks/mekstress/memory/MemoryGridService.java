@@ -367,6 +367,9 @@ public final class MemoryGridService implements IMemoryGridService, IStorageProv
         lastGearboxScanTick = tick;
         Map<GlobalPos, GearboxDemand> scanned = new LinkedHashMap<>();
         for (IGridNode node : grid.getNodes()) {
+            if (!node.isActive()) {
+                continue;
+            }
             Object owner = node.getOwner();
             if (!(owner instanceof MEGearboxBlockEntity gearbox)
                 || gearbox.getLevel() == null || gearbox.getLevel().isClientSide
@@ -387,8 +390,12 @@ public final class MemoryGridService implements IMemoryGridService, IStorageProv
     private List<MemoryDriveBlockEntity> findDrives() {
         Map<GlobalPos, MemoryDriveBlockEntity> drives = new LinkedHashMap<>();
         for (IGridNode node : grid.getNodes()) {
+            if (!node.isActive()) {
+                continue;
+            }
             Object owner = node.getOwner();
-            if (!(owner instanceof MemoryDriveBlockEntity drive)) {
+            if (!(owner instanceof MemoryDriveBlockEntity drive)
+                || drive.getLevel() == null || drive.getLevel().isClientSide) {
                 continue;
             }
             GlobalPos globalPos = GlobalPos.of(drive.getLevel().dimension(), drive.getBlockPos());

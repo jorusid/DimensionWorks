@@ -17,7 +17,7 @@ import java.util.WeakHashMap;
  * scaled without scanning unloaded chunks or recursively recalculating network capacity.
  */
 public final class CreateCapacityRegistry {
-    private static final Map<KineticNetwork, Sample> SAMPLES =
+    private static final Map<KineticNetwork, Map<UUID, Double>> SAMPLES =
         Collections.synchronizedMap(new WeakHashMap<>());
 
     private CreateCapacityRegistry() {
@@ -28,36 +28,45 @@ public final class CreateCapacityRegistry {
             return naturalCapacity;
         }
 
-        KineticBlockEntity member = activeMember(network);
-        if (member == null) {
+        if (activeMember(network) == null) {
             return naturalCapacity;
         }
 
-        UUID owner = GearHeartOwnerResolver.owner(member);
-        register(network, owner, naturalCapacity);
-        clearRemoved();
+        Map<UUID, Double> contributions = ownerCapacities(network, naturalCapacity);
+        registerOwners(network, contributions);
 
         Map<UUID, Double> raw = rawCapacities();
         double limit = RpmLimitConfig.GEAR_HEART_CREATE_CAPACITY_CURSED_SU.get();
-        int repairedMask = GearHeartEffects.activeQuotaMask(owner);
-
-        if (owner.equals(GearHeartOwnerResolver.SHARED_OWNER)) {
-            if (!GearHeartEffects.anyQuotaUnreleased(GearHeartState.CREATE_CAPACITY)) {
-                return naturalCapacity;
-            }
-            return applyOwnerQuota(raw, owner, naturalCapacity, 0, limit, 0.0D);
-        }
-
         double sharedRaw = raw.getOrDefault(GearHeartOwnerResolver.SHARED_OWNER, 0.0D);
-        if (!GearHeartEffects.hasQuota(owner)) {
-            return naturalCapacity;
-        }
         double sharedScaled = sharedRaw > 0.0D
             ? scaleBucket(raw, GearHeartOwnerResolver.SHARED_OWNER,
                 Math.min(limit, GearHeartQuotaPolicy.limit(
                     GearHeartQuotaType.CREATE_CAPACITY, 0)))
             : 0.0D;
-        return applyOwnerQuota(raw, owner, naturalCapacity, repairedMask, limit, sharedScaled);
+
+        double scaledTotal = 0.0D;
+        for (Map.Entry<UUID, Double> entry : contributions.entrySet()) {
+            UUID owner = entry.getKey();
+            double contribution = entry.getValue();
+            if (owner.equals(GearHeartOwnerResolver.SHARED_OWNER)) {
+                scaledTotal += GearHeartEffects.anyQuotaUnreleased(GearHeartState.CREATE_CAPACITY)
+                    ? applyOwnerQuota(
+                        raw, owner, (float) contribution, 0, limit, 0.0D)
+                    : contribution;
+                continue;
+            }
+            if (!GearHeartEffects.hasQuota(owner)) {
+                scaledTotal += contribution;
+                continue;
+            }
+            scaledTotal += applyOwnerQuota(
+                raw, owner, (float) contribution,
+                GearHeartEffects.activeQuotaMask(owner), limit, sharedScaled);
+        }
+        if (!Double.isFinite(scaledTotal) || scaledTotal < 0.0D) {
+            return 0.0F;
+        }
+        return (float) Math.min(naturalCapacity, scaledTotal);
     }
 
     static float applyOwnerQuota(Map<UUID, Double> raw, UUID owner, float naturalCapacity,
@@ -76,13 +85,24 @@ public final class CreateCapacityRegistry {
         if (network == null || owner == null || !Float.isFinite(naturalCapacity)) {
             return;
         }
-        SAMPLES.put(network, new Sample(owner, Math.max(0.0D, naturalCapacity)));
+        registerOwners(network, Collections.singletonMap(owner, Math.max(0.0D, naturalCapacity)));
+    }
+
+    private static void registerOwners(KineticNetwork network, Map<UUID, Double> contributions) {
+        if (network == null || contributions == null || contributions.isEmpty()) {
+            return;
+        }
+        SAMPLES.put(network, Map.copyOf(contributions));
     }
 
     public static void clearRemoved() {
         synchronized (SAMPLES) {
-            SAMPLES.keySet().removeIf(CreateCapacityRegistry::isActive);
+            SAMPLES.keySet().removeIf(network -> !shouldRetainNetwork(isActive(network)));
         }
+    }
+
+    static boolean shouldRetainNetwork(boolean active) {
+        return active;
     }
 
     public static double scaleBucket(Map<UUID, Double> capacities, UUID bucketOwner, double target) {
@@ -130,11 +150,49 @@ public final class CreateCapacityRegistry {
     private static Map<UUID, Double> rawCapacities() {
         Map<UUID, Double> result = new HashMap<>();
         synchronized (SAMPLES) {
-            for (Sample sample : SAMPLES.values()) {
-                result.merge(sample.owner(), sample.capacity(), Double::sum);
+            for (Map<UUID, Double> contributions : SAMPLES.values()) {
+                contributions.forEach((owner, capacity) ->
+                    result.merge(owner, capacity, CreateCapacityRegistry::saturatedAdd));
             }
         }
         return result;
+    }
+
+    private static Map<UUID, Double> ownerCapacities(KineticNetwork network, float naturalCapacity) {
+        Map<UUID, Double> result = new HashMap<>();
+        double presentCapacity = 0.0D;
+        synchronized (network.sources) {
+            for (KineticBlockEntity source : network.sources.keySet()) {
+                if (!isActiveMember(source)) {
+                    continue;
+                }
+                float contribution = network.getActualCapacityOf(source);
+                if (!Float.isFinite(contribution) || contribution <= 0.0F) {
+                    continue;
+                }
+                UUID owner = GearHeartOwnerResolver.owner(source);
+                result.merge(owner, (double) contribution, CreateCapacityRegistry::saturatedAdd);
+                presentCapacity = saturatedAdd(presentCapacity, contribution);
+            }
+        }
+
+        double unloaded = naturalCapacity - presentCapacity;
+        if (unloaded > 0.0D) {
+            result.merge(
+                GearHeartOwnerResolver.SHARED_OWNER, unloaded,
+                CreateCapacityRegistry::saturatedAdd);
+        }
+        if (result.isEmpty()) {
+            result.put(GearHeartOwnerResolver.SHARED_OWNER, (double) naturalCapacity);
+        }
+        return result;
+    }
+
+    private static double saturatedAdd(double left, double right) {
+        if (right > 0.0D && left > Double.MAX_VALUE - right) {
+            return Double.MAX_VALUE;
+        }
+        return left + right;
     }
 
     private static KineticBlockEntity activeMember(KineticNetwork network) {
@@ -158,6 +216,4 @@ public final class CreateCapacityRegistry {
             && member.getLevel().getBlockEntity(member.getBlockPos()) == member;
     }
 
-    private record Sample(UUID owner, double capacity) {
-    }
 }

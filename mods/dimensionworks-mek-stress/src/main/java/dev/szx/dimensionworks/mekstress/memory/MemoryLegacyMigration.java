@@ -34,6 +34,7 @@ import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.level.ChunkEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.MissingMappingsEvent;
@@ -85,6 +86,15 @@ public final class MemoryLegacyMigration {
     public static void onServerStarted(ServerStartedEvent event) {
         for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
             clearPlayer(player);
+        }
+    }
+
+    public static void onServerStopping(ServerStoppingEvent event) {
+        synchronized (QUEUE_LOCK) {
+            BLOCK_QUEUE.clear();
+            QUEUED_BLOCKS.clear();
+            ENTITY_QUEUE.clear();
+            QUEUED_ENTITIES.clear();
         }
     }
 

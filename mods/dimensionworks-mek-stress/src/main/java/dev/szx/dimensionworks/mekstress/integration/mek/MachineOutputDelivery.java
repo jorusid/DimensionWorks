@@ -1,6 +1,9 @@
 package dev.szx.dimensionworks.mekstress.integration.mek;
 
 import dev.szx.dimensionworks.mekstress.core.MachineWorkContext;
+import dev.szx.dimensionworks.rpmlimit.quota.FinalProductionGate;
+import dev.szx.dimensionworks.rpmlimit.quota.GearHeartOwnerResolver;
+import dev.szx.dimensionworks.rpmlimit.quota.MekProcessingContext;
 import mekanism.api.Action;
 import mekanism.api.AutomationType;
 import mekanism.api.chemical.ChemicalStack;
@@ -11,6 +14,7 @@ import mekanism.api.recipes.cache.CachedRecipe.OperationTracker;
 import mekanism.api.recipes.cache.CachedRecipe.OperationTracker.RecipeError;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
+import java.util.UUID;
 
 /** Shared output insertion and capacity checks for the mechanical production multiplier. */
 public final class MachineOutputDelivery {
@@ -74,6 +78,10 @@ public final class MachineOutputDelivery {
         ItemStack remainder = slot.insertItem(maxOutput, Action.SIMULATE, AutomationType.INTERNAL);
         long availableRoom = maxOutput.getCount() - remainder.getCount();
         int operations = MachineWorkContext.maxOutputOperations(toOutput.getCount(), availableRoom);
+        if (operations > 0 && !allowFinalProduction(
+            toOutput, scaledAmount(toOutput.getCount(), operations))) {
+            operations = 0;
+        }
         tracker.updateOperations(operations);
         if (operations == 0) {
             if (availableRoom == 0L && slot.getLimit(slot.getStack()) - slot.getCount() > 0) {
@@ -94,6 +102,10 @@ public final class MachineOutputDelivery {
         ChemicalStack remainder = tank.insert(maxOutput, Action.SIMULATE, AutomationType.INTERNAL);
         long availableRoom = maxOutput.getAmount() - remainder.getAmount();
         int operations = MachineWorkContext.maxOutputOperations(toOutput.getAmount(), availableRoom);
+        if (operations > 0 && !allowFinalProduction(
+            toOutput, scaledAmount(toOutput.getAmount(), operations))) {
+            operations = 0;
+        }
         tracker.updateOperations(operations);
         if (operations == 0) {
             if (availableRoom == 0L && tank.getNeeded() > 0L) {
@@ -113,6 +125,10 @@ public final class MachineOutputDelivery {
         FluidStack remainder = tank.insert(maxOutput, Action.SIMULATE, AutomationType.INTERNAL);
         long availableRoom = maxOutput.getAmount() - remainder.getAmount();
         int operations = MachineWorkContext.maxOutputOperations(toOutput.getAmount(), availableRoom);
+        if (operations > 0 && !allowFinalProduction(
+            toOutput, scaledAmount(toOutput.getAmount(), operations))) {
+            operations = 0;
+        }
         tracker.updateOperations(operations);
         if (operations == 0) {
             if (availableRoom == 0L && tank.getNeeded() > 0L) {
@@ -121,5 +137,39 @@ public final class MachineOutputDelivery {
                 tracker.addError(notEnoughSpace);
             }
         }
+    }
+
+    private static boolean allowFinalProduction(ItemStack output, long amount) {
+        return FinalProductionGate.tryConsume(owner(), output, amount, tick());
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static boolean allowFinalProduction(ChemicalStack output, long amount) {
+        return FinalProductionGate.tryConsume(owner(), output, amount, tick());
+    }
+
+    private static boolean allowFinalProduction(FluidStack output, long amount) {
+        return FinalProductionGate.tryConsume(owner(), output, amount, tick());
+    }
+
+    private static long scaledAmount(long baseAmount, int operations) {
+        if (operations <= 0 || baseAmount <= 0L) {
+            return 0L;
+        }
+        if (MachineWorkContext.scaling()) {
+            return MachineWorkContext.scaleOutput(baseAmount, operations);
+        }
+        long result = baseAmount * (long) operations;
+        return result < 0L || result > Long.MAX_VALUE ? Long.MAX_VALUE : result;
+    }
+
+    private static UUID owner() {
+        MekProcessingContext.Context context = MekProcessingContext.current();
+        return context == null ? GearHeartOwnerResolver.SHARED_OWNER : context.owner();
+    }
+
+    private static long tick() {
+        MekProcessingContext.Context context = MekProcessingContext.current();
+        return context == null ? 0L : context.tick();
     }
 }

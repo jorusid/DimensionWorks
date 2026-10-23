@@ -2,6 +2,7 @@ package dev.szx.dimensionworks.rpmlimit;
 
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import dev.szx.dimensionworks.rpmlimit.mixin.ChunkMapAccessor;
+import dev.szx.dimensionworks.rpmlimit.api.IPreclampedKineticSpeed;
 import dev.szx.dimensionworks.rpmlimit.optimizer.KineticNetworkOptimizer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
@@ -98,6 +99,8 @@ public final class RpmLimitManager {
     public static float clamp(KineticBlockEntity k, float requested) {
         if (requested == 0)
             return 0;
+        if (k instanceof IPreclampedKineticSpeed)
+            return requested;
         return RpmLimitMath.cap(requested, limitFor(k));
     }
 
@@ -223,7 +226,7 @@ public final class RpmLimitManager {
             current = blockEntity instanceof KineticBlockEntity source ? source : null;
         }
 
-        return owner == null ? RpmLimitConfig.MAX_RPM.get() : limitForOwner(owner);
+        return owner == null ? RpmLimitConfig.DEFAULT_RPM.get() : limitForOwner(owner);
     }
 
     private static int limitForOwner(UUID owner) {

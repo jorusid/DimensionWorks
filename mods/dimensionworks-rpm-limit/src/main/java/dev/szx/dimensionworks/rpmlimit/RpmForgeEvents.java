@@ -3,6 +3,8 @@ package dev.szx.dimensionworks.rpmlimit;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.infrastructure.config.AllConfigs;
+import dev.szx.dimensionworks.rpmlimit.optimizer.KineticNetworkOptimizer;
+import dev.szx.dimensionworks.rpmlimit.quota.CreateCapacityRegistry;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
@@ -92,6 +94,14 @@ public final class RpmForgeEvents {
             RpmLimitManager.refresh(p.server.getPlayerList().getPlayers(), p.server.getTickCount());
         if (e.phase == TickEvent.Phase.END && e.player instanceof ServerPlayer p)
             GearHeartEffects.tickPlayer(p);
+    }
+
+    @SubscribeEvent
+    public static void serverTick(TickEvent.ServerTickEvent e) {
+        if (e.phase == TickEvent.Phase.END) {
+            CreateCapacityRegistry.clearRemoved();
+            KineticNetworkOptimizer.abortBatch();
+        }
     }
 
     @SubscribeEvent

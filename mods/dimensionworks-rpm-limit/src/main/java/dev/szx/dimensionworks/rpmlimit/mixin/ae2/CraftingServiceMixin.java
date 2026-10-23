@@ -26,8 +26,7 @@ public abstract class CraftingServiceMixin {
                                                         appeng.api.networking.energy.IEnergyService energy,
                                                         CallbackInfo ci) {
         CraftingService service = (CraftingService) (Object) this;
-        AeCraftingRegistry.register(service, AeCraftingRegistry.owner(grid == null
-            ? null : grid.getPivot()));
+        AeCraftingRegistry.register(service);
     }
 
     @Inject(method = "submitJob", at = @At("HEAD"), remap = false)

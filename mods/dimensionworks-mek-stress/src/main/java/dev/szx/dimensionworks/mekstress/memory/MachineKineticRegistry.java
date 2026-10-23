@@ -1,17 +1,25 @@
 package dev.szx.dimensionworks.mekstress.memory;
 
 import com.simibubi.create.content.kinetics.KineticNetwork;
+import dev.szx.dimensionworks.mekstress.DimensionWorksMekStress;
 import dev.szx.dimensionworks.mekstress.core.MachinePowerMath;
 import dev.szx.dimensionworks.rpmlimit.optimizer.KineticNetworkOptimizer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import mekanism.common.tile.base.TileEntityMekanism;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
 
 /** Maintains one virtual Create kinetic member for each powered Mekanism machine. */
 public final class MachineKineticRegistry {
     private static final Map<TileEntityMekanism, MachineKineticMember> MEMBERS =
         Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Set<KineticNetwork> DIRTY_NETWORKS =
+        Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
 
     private MachineKineticRegistry() {
     }
@@ -50,12 +58,12 @@ public final class MachineKineticRegistry {
 
             if (previous != null && previous != network) {
                 KineticNetworkOptimizer.invalidate(previous);
-                previous.updateNetwork();
+                schedule(previous);
             }
             if (topologyChanged || speedChanged) {
                 if (topologyChanged)
                     KineticNetworkOptimizer.invalidate(network);
-                network.updateNetwork();
+                schedule(network);
             }
         }
     }
@@ -71,8 +79,42 @@ public final class MachineKineticRegistry {
             if (network != null) {
                 KineticNetworkOptimizer.invalidate(network);
                 network.members.remove(member);
-                network.updateNetwork();
+                schedule(network);
             }
         }
+    }
+
+    static void flushDirtyNetworks() {
+        KineticNetworkOptimizer.abortBatch();
+        ArrayList<KineticNetwork> pending;
+        synchronized (DIRTY_NETWORKS) {
+            pending = new ArrayList<>(DIRTY_NETWORKS);
+            DIRTY_NETWORKS.clear();
+        }
+        for (KineticNetwork network : pending) {
+            try {
+                network.updateNetwork();
+            } catch (RuntimeException exception) {
+                DimensionWorksMekStress.LOGGER.warn(
+                    "Failed to refresh a Mekanism-backed kinetic network.",
+                    exception);
+            }
+        }
+    }
+
+    private static void schedule(KineticNetwork network) {
+        if (network != null) {
+            DIRTY_NETWORKS.add(network);
+        }
+    }
+
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) {
+            flushDirtyNetworks();
+        }
+    }
+
+    public static void onServerStopping(ServerStoppingEvent event) {
+        DIRTY_NETWORKS.clear();
     }
 }

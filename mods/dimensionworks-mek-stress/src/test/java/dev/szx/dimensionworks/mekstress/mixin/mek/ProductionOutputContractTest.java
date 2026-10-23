@@ -29,4 +29,16 @@ class ProductionOutputContractTest {
         assertTrue(scaledHandler.contains("MachineWorkContext.scaleOutput(accumulated.count, 1)"));
         assertTrue(delivery.contains("remaining -= inserted"));
     }
+
+    @Test
+    void scaledOutputDeliveryCannotBypassFinalProductionQuota() throws IOException {
+        String delivery = Files.readString(Path.of(
+            "src/main/java/dev/szx/dimensionworks/mekstress/integration/mek/MachineOutputDelivery.java"));
+
+        assertTrue(delivery.contains("FinalProductionGate.tryConsume("));
+        assertTrue(delivery.contains("MekProcessingContext.current()"));
+        assertTrue(delivery.contains("capItem"));
+        assertTrue(delivery.contains("capChemical"));
+        assertTrue(delivery.contains("capFluid"));
+    }
 }

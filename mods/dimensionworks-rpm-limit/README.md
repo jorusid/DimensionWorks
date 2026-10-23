@@ -78,6 +78,15 @@ Create 自身还会用 `kinetics.maxRotationSpeed` 钳制所有动力方块，�
 
 该改造主要减少重复全网计算和重复同步，不会让必要的网络成员同步变成常数时间。实际收益需用相同工厂布局及 Spark/Forge profiler 对比确认。
 
+超速倍率在 `KineticNetwork#getActualStressOf` 的实际应力边界动态应用，`network.members` 只保存速度无关的基础 impact，因此速度断点、玩家 RPM 上限和附属发电机变速后不会继续沿用旧应力系数。批处理状态会在服务器 tick 末清理，单个网络刷新异常会被隔离并记录。
+
+### 所有权与额度边界
+
+- 无所有者或无法沿 source 链解析所有者的普通 Create 方块回退到保守的默认 RPM，不回退到最大 RPM。
+- 已经由其他自研适配器收口转速的虚拟成员通过 `IPreclampedKineticSpeed` 跳过二次限速。
+- Gear Heart 的 Create 容量按每个 source 的实际容量与所有者分别分桶；混合所有者网络不会整体归给第一个活跃成员。
+- 速度控制器只在原存档缺少所有者时补写发送者，不覆盖既有所有者。
+
 ## Command
 Requires permission level 2:
 ```

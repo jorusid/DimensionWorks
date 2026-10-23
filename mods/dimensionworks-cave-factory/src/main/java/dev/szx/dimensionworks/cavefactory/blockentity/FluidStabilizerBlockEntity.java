@@ -8,6 +8,8 @@ import dev.szx.dimensionworks.cavefactory.logic.FactoryModule;
 import dev.szx.dimensionworks.cavefactory.recipe.FluidStabilizationRecipe;
 import dev.szx.dimensionworks.cavefactory.registry.CFBlockEntities;
 import dev.szx.dimensionworks.cavefactory.registry.CFRecipes;
+import dev.szx.dimensionworks.rpmlimit.quota.FinalProductionGate;
+import dev.szx.dimensionworks.rpmlimit.quota.GearHeartOwnerResolver;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -87,15 +89,27 @@ public class FluidStabilizerBlockEntity extends FactoryMachineBlockEntity {
             recipe.inputAmount()
         ).outputs();
         int operations = Math.min(Math.max(1, batchesThisTick()), availableOperations);
+        ItemStack result = recipe.result();
+        long gateAmount = saturatedMultiply(result.getCount(), operations);
+        if (!canAccept(result)
+            || !FinalProductionGate.tryConsumeItem(
+                GearHeartOwnerResolver.normalize(owner()), result, gateAmount,
+                level.getGameTime())) {
+            return;
+        }
         for (int i = 0; i < operations; i++) {
-            ItemStack result = recipe.result();
-            if (!canAccept(result)) {
-                return;
-            }
             inputTank().drain(recipe.inputAmount(), IFluidHandler.FluidAction.EXECUTE);
             insertResult(result);
             recordSuccessfulBatch();
         }
+    }
+
+    private static long saturatedMultiply(long value, int count) {
+        if (value <= 0L || count <= 0) {
+            return 0L;
+        }
+        long result = value * (long) count;
+        return result < 0L || result > Long.MAX_VALUE ? Long.MAX_VALUE : result;
     }
 
     private FluidStabilizationRecipe findRecipe() {

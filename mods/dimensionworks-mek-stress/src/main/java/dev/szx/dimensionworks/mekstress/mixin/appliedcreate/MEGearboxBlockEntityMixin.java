@@ -75,6 +75,10 @@ public abstract class MEGearboxBlockEntityMixin implements IMEGearboxExportState
             dimensionworks$deactivate();
             return;
         }
+        if (!self.getMainNode().isActive()) {
+            dimensionworks$deactivate();
+            return;
+        }
 
         IMemoryGridService service = self.getMainNode().getGrid() == null
             ? null
