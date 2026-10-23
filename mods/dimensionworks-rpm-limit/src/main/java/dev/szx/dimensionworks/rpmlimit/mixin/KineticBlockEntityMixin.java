@@ -4,6 +4,7 @@ import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.utility.CreateLang;
 import dev.szx.dimensionworks.rpmlimit.OverspeedBonus;
 import dev.szx.dimensionworks.rpmlimit.RpmLimitManager;
+import dev.szx.dimensionworks.rpmlimit.optimizer.KineticNetworkOptimizer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -80,5 +81,10 @@ public abstract class KineticBlockEntityMixin {
             .style(ChatFormatting.AQUA)
             .forGoggles(tooltip);
         cir.setReturnValue(true);
+    }
+
+    @Inject(method = "setSpeed", at = @At("RETURN"), remap = false)
+    private void dimensionworks$updateStressDelta(float speed, CallbackInfo ci) {
+        KineticNetworkOptimizer.onMemberSpeedChanged((KineticBlockEntity) (Object) this);
     }
 }
