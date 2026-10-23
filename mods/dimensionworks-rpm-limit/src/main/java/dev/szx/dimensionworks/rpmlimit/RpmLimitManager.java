@@ -248,7 +248,7 @@ public final class RpmLimitManager {
         data.putInt(MACHINE_LIMIT_KEY, value);
         k.setChanged();
         // Cached stress/capacity depend on the effective RPM limit, not only Create's raw speed.
-        KineticNetworkOptimizer.invalidateFor(k);
+        KineticNetworkOptimizer.invalidateAndRefreshFor(k);
         return true;
     }
 
