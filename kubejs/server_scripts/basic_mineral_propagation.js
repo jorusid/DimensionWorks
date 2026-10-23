@@ -310,7 +310,7 @@ const BASIC_MINERAL_LINES = [
     "heat": "superheated"
   },
   {
-    "item": "mekanism:fluorite",
+    "item": "mekanism:fluorite_gem",
     "path": "fluorite",
     "compactingInputs": [
       "2x minecraft:basalt",
