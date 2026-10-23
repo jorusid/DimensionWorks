@@ -33,6 +33,7 @@
 | mekanism:raw_lead | 1× mekanism:raw_lead；2× minecraft:gravel；1× minecraft:flint；1× minecraft:iron_ingot | 1× mekanism:raw_lead；2× minecraft:flint | 1× mekanism:raw_lead；2× kubejs:mineral_residue；1× minecraft:iron_ingot；1× minecraft:gravel；1× minecraft:flint；500 mB minecraft:water | 加热 |
 | mekanism:raw_osmium | 1× mekanism:raw_osmium；2× minecraft:deepslate；1× minecraft:iron_ingot；1× minecraft:quartz | 1× mekanism:raw_osmium；2× create:brass_ingot | 1× mekanism:raw_osmium；3× kubejs:mineral_residue；1× minecraft:iron_ingot；1× minecraft:deepslate；1× minecraft:quartz；500 mB minecraft:water | 加热 |
 | mekanism:raw_uranium | 1× mekanism:raw_uranium；2× minecraft:basalt；1× minecraft:gunpowder；1× minecraft:quartz | 1× mekanism:raw_uranium；4× minecraft:gunpowder | 1× mekanism:raw_uranium；4× kubejs:mineral_residue；1× minecraft:basalt；1× minecraft:gunpowder；1× minecraft:quartz；1000 mB minecraft:water | 超级加热 |
+| mekanism:fluorite | 1× mekanism:fluorite；2× minecraft:basalt；1× minecraft:calcite；1× minecraft:glowstone_dust | 1× mekanism:fluorite；2× minecraft:lapis_lazuli | 1× mekanism:fluorite；3× kubejs:mineral_residue；1× minecraft:calcite；1× minecraft:glowstone_dust；500 mB minecraft:water | 加热 |
 
 ## 配方 ID 规范
 
@@ -57,7 +58,7 @@ self_propagation/basic_minerals/<目标路径>/<路线>
 
 ## 范围说明
 
-纳入：原版基础矿物（铁、铜、金、煤、红石、青金石、下界石英、钻石、绿宝石、紫水晶碎片、远古残骸）以及 Create 锌和 Mekanism 常规金属（锡、铅、锇、铀）。
+纳入：原版基础矿物（铁、铜、金、煤、红石、青金石、下界石英、钻石、绿宝石、紫水晶碎片、远古残骸）以及 Create 锌、Mekanism 常规金属（锡、铅、锇、铀）和重要非金属矿物萤石。
 
 不纳入：洞穴维度专属稀有资源与其他维度进度门槛资源；这些继续由各自维度生产生态控制。远古残骸虽为原版矿石，但按末期资源处理，成本显著高于普通矿物。
 
