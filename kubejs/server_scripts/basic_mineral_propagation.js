@@ -18,7 +18,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:gravel"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 250,
+    "fluidAmount": 250,
     "heat": "heated"
   },
   {
@@ -36,7 +36,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:gravel"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 250,
+    "fluidAmount": 250,
     "heat": "heated"
   },
   {
@@ -54,7 +54,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:netherrack"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 500,
+    "fluidAmount": 500,
     "heat": "heated"
   },
   {
@@ -72,7 +72,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:gravel"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 250,
+    "fluidAmount": 250,
     "heat": "heated"
   },
   {
@@ -91,7 +91,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:flint"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 250,
+    "fluidAmount": 250,
     "heat": "heated"
   },
   {
@@ -111,7 +111,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:gravel"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 500,
+    "fluidAmount": 500,
     "heat": "heated"
   },
   {
@@ -129,7 +129,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:soul_sand"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 250,
+    "fluidAmount": 250,
     "heat": "heated"
   },
   {
@@ -148,7 +148,7 @@ const BASIC_MINERAL_LINES = [
       "2x minecraft:quartz"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 1000,
+    "fluidAmount": 1000,
     "heat": "superheated"
   },
   {
@@ -170,7 +170,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:amethyst_shard"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 1000,
+    "fluidAmount": 1000,
     "heat": "superheated"
   },
   {
@@ -189,7 +189,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:glowstone_dust"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 500,
+    "fluidAmount": 500,
     "heat": "heated"
   },
   {
@@ -209,7 +209,7 @@ const BASIC_MINERAL_LINES = [
       "2x minecraft:basalt"
     ],
     "recoveryFluid": "minecraft:lava",
-    "waterAmount": 1000,
+    "fluidAmount": 1000,
     "heat": "superheated"
   },
   {
@@ -228,7 +228,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:cobblestone"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 500,
+    "fluidAmount": 500,
     "heat": "heated"
   },
   {
@@ -248,7 +248,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:flint"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 500,
+    "fluidAmount": 500,
     "heat": "heated"
   },
   {
@@ -268,7 +268,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:quartz"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 500,
+    "fluidAmount": 500,
     "heat": "heated"
   },
   {
@@ -288,7 +288,7 @@ const BASIC_MINERAL_LINES = [
       "minecraft:quartz"
     ],
     "recoveryFluid": "minecraft:water",
-    "waterAmount": 1000,
+    "fluidAmount": 1000,
     "heat": "superheated"
   }
 ]
@@ -326,7 +326,7 @@ ServerEvents.recipes(event => {
 
     // Line 2 — Mekanism combiner. This uses Mekanism's native serializer directly;
     // the pack does not depend on an optional KubeJS Mekanism addon.
-    const combiningRecipe = event.custom({
+    const combiningRecipe = event.custom(JsonIO.of({
       type: 'mekanism:combining',
       mainInput: {
         ingredient: { item: item },
@@ -340,14 +340,14 @@ ServerEvents.recipes(event => {
         item: item,
         count: 2
       }
-    })
+    }))
     mineralRecipe(combiningRecipe, recipePath + 'mekanism_combining')
 
     // Line 3 — Create heated residue recovery. A mineral sample is still required:
     // universal residue is a feedstock, not a bypass around the finite-sample start.
     const recoveryInputs = [item, mineral.residueCount + 'x kubejs:mineral_residue']
       .concat(mineral.recoveryInputs)
-    recoveryInputs.push(Fluid.of(mineral.recoveryFluid, mineral.waterAmount))
+    recoveryInputs.push(Fluid.of(mineral.recoveryFluid, mineral.fluidAmount))
     const recoveryRecipe = event.recipes.create.mixing(
       '2x ' + item,
       expandMineralIngredients(recoveryInputs)

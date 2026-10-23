@@ -67,10 +67,10 @@ class BasicMineralPropagationTest(unittest.TestCase):
                 self.assertGreater(int(line["mekanismCarrierCount"]), 0)
                 self.assertGreater(int(line["residueCount"]), 0)
                 self.assertTrue(line["recoveryInputs"])
-                self.assertGreater(int(line["waterAmount"]), 0)
+                self.assertGreater(int(line["fluidAmount"]), 0)
                 self.assertIn(line["heat"], ("heated", "superheated"))
         for suffix in suffixes:
-            self.assertIn(suffix, self.source)
+            self.assertIn("recipePath + '" + suffix + "'", self.source)
 
     def test_high_value_targets_have_real_cost_escalation(self) -> None:
         by_item = {line["item"]: line for line in self.lines}
