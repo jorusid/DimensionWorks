@@ -1,5 +1,7 @@
 package dev.szx.dimensionworks.rpmlimit;
 
+import dev.szx.dimensionworks.rpmlimit.optimizer.KineticNetworkOptimizer;
+
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -30,7 +32,14 @@ public final class DimensionWorksRpmLimit {
 
     private void onConfig(ModConfigEvent event) {
         RpmForgeEvents.config(event);
-        if (event.getConfig().getSpec() == RpmLimitConfig.SPEC)
+        boolean rpmConfigChanged = event.getConfig().getSpec() == RpmLimitConfig.SPEC;
+        boolean createServerConfigChanged =
+            "create".equals(event.getConfig().getModId())
+                && event.getConfig().getType() == ModConfig.Type.SERVER;
+
+        if (rpmConfigChanged)
             OverspeedBonus.reloadCurve();
+        if (rpmConfigChanged || createServerConfigChanged)
+            KineticNetworkOptimizer.invalidateAllLoadedNetworks();
     }
 }
