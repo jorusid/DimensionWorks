@@ -28,6 +28,8 @@ public final class MachineKineticRegistry {
             KineticNetwork previous = member.dimensionworks$boundNetwork();
             float previousRpm = member.getTheoreticalSpeed();
             boolean wasAttached = network.members.containsKey(member);
+            boolean topologyChanged = previous != network || !wasAttached;
+            boolean speedChanged = Float.compare(previousRpm, rpm) != 0;
             member.setSpeed(rpm);
 
             if (previous != network) {
@@ -37,17 +39,22 @@ public final class MachineKineticRegistry {
                 }
                 member.dimensionworks$bindNetwork(network);
             }
-            if (previous != network || !wasAttached) {
+            if (topologyChanged) {
                 KineticNetworkOptimizer.invalidate(network);
                 network.members.put(member, MachinePowerMath.stressPerRpm(1.0F));
+            } else if (speedChanged) {
+                // Virtual members do not tick in the world, so their own KineticBlockEntity
+                // dirty flag cannot drive the refresh. Update the aggregate directly when cached.
+                KineticNetworkOptimizer.updateStressContribution(network, member);
             }
 
             if (previous != null && previous != network) {
                 KineticNetworkOptimizer.invalidate(previous);
                 previous.updateNetwork();
             }
-            if (previous != network || !wasAttached || Float.compare(previousRpm, rpm) != 0) {
-                KineticNetworkOptimizer.invalidate(network);
+            if (topologyChanged || speedChanged) {
+                if (topologyChanged)
+                    KineticNetworkOptimizer.invalidate(network);
                 network.updateNetwork();
             }
         }
