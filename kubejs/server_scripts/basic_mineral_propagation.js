@@ -342,23 +342,13 @@ ServerEvents.recipes(event => {
     )
     mineralRecipe(compactingRecipe, recipePath + 'mechanical_growth')
 
-    // Line 2 — Mekanism combiner. This uses Mekanism's native serializer directly;
-    // the pack does not depend on an optional KubeJS Mekanism addon.
-    const combiningRecipe = event.custom(JsonIO.of({
-      type: 'mekanism:combining',
-      mainInput: {
-        ingredient: { item: item },
-        amount: 1
-      },
-      extraInput: {
-        ingredient: { item: mineral.mekanismCarrier },
-        amount: mineral.mekanismCarrierCount
-      },
-      output: {
-        item: item,
-        count: 2
-      }
-    }))
+    // Line 2 — Mekanism Combiner. Use the KubeJS Mekanism integration so
+    // both input quantities are encoded as real ingredient-with-amount values.
+    const combiningRecipe = event.recipes.mekanism.combining(
+      '2x ' + item,
+      item,
+      mineral.mekanismCarrierCount + 'x ' + mineral.mekanismCarrier
+    )
     mineralRecipe(combiningRecipe, recipePath + 'mekanism_combining')
 
     // Line 3 — Create heated residue recovery. A mineral sample is still required:
