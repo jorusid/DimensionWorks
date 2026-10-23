@@ -62,4 +62,4 @@ server_scripts/basic_mineral_propagation.js 为 16 种目标资源配置三条�
 
 ## 烈焰蛋糕红石成本
 
-`server_scripts/blaze_cake_redstone_cost.js` 统一替换所有产出 `create:blaze_cake_base` 的配方，要求鸡蛋、糖、烈焰粉末和 1 份红石粉经机械压制合成底料。原版将底料注入 250 mB 熔岩制成烈焰蛋糕的配方保留不变；这样附属模组若提供其他底料配方，也不会绕过红石成本。
+`server_scripts/blaze_cake_redstone_cost.js` 统一替换所有产出 `create:blaze_cake_base` 的配方，要求鸡蛋、糖、灰烬粉（Create Cinder Flour）和 1 份红石粉经机械压制合成底料。原版将底料注入 250 mB 熔岩制成烈焰蛋糕的配方保留不变；这样附属模组若提供其他底料配方，也不会绕过红石成本。
