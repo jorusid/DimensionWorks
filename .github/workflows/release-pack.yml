@@ -10,6 +10,7 @@ on:
       - 'update-Windows/**'
       - 'mods/dimensionworks-*/**'
       - 'manifest/mods.json'
+      - 'kubejs/**'
       - 'scripts/package_mrpack.py'
       - 'scripts/package_server.py'
       - 'scripts/pack_hook.py'
