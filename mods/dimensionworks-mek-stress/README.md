@@ -73,6 +73,10 @@ ME Gearbox EXPORT 向 Create 网络宣告的容量严格等于本次实际扣除
 
 容量、带宽、机器转速等平衡值位于 COMMON 配置 `dimensionworks_mek_stress-common.toml`；内存卡输入应力扣除比例由卡型固定定义。槽数、结构规则、两台 Drive 上限、100% 扣除上限和齿轮箱守恒边界不可配置。
 
+## Create 动力网络统计缓存
+
+0.3.6 起，虚拟 Mekanism 机器参与同一套可失效的应力总账。网络成员变化时缓存立即失效；重算仍会检查虚拟成员有效性，避免区块卸载或设备移除后继续计入过期负载。发电机更新的批处理和增量统计由依赖的 `dimensionworks-rpm-limit` 提供。
+
 ## 构建
 
 ```sh
