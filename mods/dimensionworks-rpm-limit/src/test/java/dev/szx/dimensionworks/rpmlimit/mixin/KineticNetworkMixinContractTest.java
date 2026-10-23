@@ -20,6 +20,8 @@ class KineticNetworkMixinContractTest {
 
         assertEquals(1, occurrences(source, "@Inject(method = \"calculateCapacity\""));
         assertTrue(source.contains("CreateCapacityRegistry.limitNaturalCapacity("));
+        assertTrue(source.contains("KineticNetworkOptimizer.cachedCapacity(self)"));
+        assertTrue(source.contains("KineticNetworkOptimizer.finishCapacityRebuild(self, naturalCapacity)"));
         assertTrue(source.contains("CallbackInfoReturnable<Float>"));
         assertFalse(source.contains("stressCapacityMultiplier("));
         assertFalse(source.contains(".calculateCapacity())"));
