@@ -28,6 +28,7 @@ EXPECTED_ITEMS = (
     "mekanism:raw_lead",
     "mekanism:raw_osmium",
     "mekanism:raw_uranium",
+    "mekanism:fluorite",
 )
 
 
@@ -52,7 +53,7 @@ class BasicMineralPropagationTest(unittest.TestCase):
         items = tuple(line["item"] for line in self.lines)
         self.assertEqual(items, EXPECTED_ITEMS)
         self.assertEqual(len(items), len(set(items)))
-        self.assertEqual(len(self.lines), 16)
+        self.assertEqual(len(self.lines), 17)
 
     def test_every_target_declares_three_recipe_styles(self) -> None:
         suffixes = (
@@ -98,6 +99,7 @@ class BasicMineralPropagationTest(unittest.TestCase):
             "mekanism:raw_lead",
             "mekanism:raw_osmium",
             "mekanism:raw_uranium",
+            "mekanism:fluorite",
         ):
             self.assertIn(item, items)
 
