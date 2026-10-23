@@ -18,7 +18,7 @@ class KineticNetworkMixinContractTest {
     void calculateCapacityDelegatesToTheOwnerAggregate() throws IOException {
         String source = Files.readString(Path.of(SOURCE_PATH));
 
-        assertEquals(1, occurrences(source, "@Inject(method = \"calculateCapacity\""));
+        assertEquals(2, occurrences(source, "@Inject(method = \"calculateCapacity\""));
         assertTrue(source.contains("CreateCapacityRegistry.limitNaturalCapacity("));
         assertTrue(source.contains("KineticNetworkOptimizer.cachedCapacity(self)"));
         assertTrue(source.contains("KineticNetworkOptimizer.finishCapacityRebuild(self, naturalCapacity)"));
