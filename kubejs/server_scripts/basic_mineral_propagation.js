@@ -308,6 +308,25 @@ const BASIC_MINERAL_LINES = [
     "recoveryFluid": "minecraft:water",
     "fluidAmount": 1000,
     "heat": "superheated"
+  },
+  {
+    "item": "mekanism:fluorite",
+    "path": "fluorite",
+    "compactingInputs": [
+      "2x minecraft:basalt",
+      "minecraft:calcite",
+      "minecraft:glowstone_dust"
+    ],
+    "mekanismCarrier": "minecraft:lapis_lazuli",
+    "mekanismCarrierCount": 2,
+    "residueCount": 3,
+    "recoveryInputs": [
+      "minecraft:calcite",
+      "minecraft:glowstone_dust"
+    ],
+    "recoveryFluid": "minecraft:water",
+    "fluidAmount": 500,
+    "heat": "heated"
   }
 ]
 
