@@ -212,7 +212,25 @@ public final class KineticNetworkOptimizer {
             || !member.hasNetwork()) {
             return;
         }
-        invalidate(member.getOrCreateNetwork());
+
+        KineticNetwork network = member.getOrCreateNetwork();
+        invalidate(network);
+        if (isBatching()) {
+            return;
+        }
+
+        // Chunk unloads do not always call Create's network.remove(). Wake one remaining member
+        // so its ordinary tick path rebuilds totals and prunes any stale entries.
+        for (KineticBlockEntity candidate : network.members.keySet()) {
+            if (candidate == member || candidate.getLevel() == null
+                || candidate.getLevel().isClientSide) {
+                continue;
+            }
+            if (candidate.getLevel().getBlockEntity(candidate.getBlockPos()) == candidate) {
+                candidate.networkDirty = true;
+                break;
+            }
+        }
     }
 
     /** Call after a network's membership or unloaded-member accounting changes. */
