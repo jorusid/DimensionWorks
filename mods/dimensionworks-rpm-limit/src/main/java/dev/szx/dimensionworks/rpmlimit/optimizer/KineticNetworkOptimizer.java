@@ -209,6 +209,38 @@ public final class KineticNetworkOptimizer {
         }
     }
 
+    /**
+     * Invalidates all currently tracked networks after a configuration reload changes effective
+     * RPM or stress rules, then schedules one real member to perform the normal full refresh.
+     */
+    public static void invalidateAllLoadedNetworks() {
+        List<KineticNetwork> networks;
+        synchronized (CACHES) {
+            networks = new ArrayList<>(CACHES.keySet());
+        }
+
+        for (KineticNetwork network : networks) {
+            NetworkCache cache = existingCache(network);
+            if (cache == null) {
+                continue;
+            }
+            boolean needsRefresh = cache.stressValid || cache.capacityValid;
+            invalidate(network);
+            if (!needsRefresh || isBatching()) {
+                continue;
+            }
+
+            for (KineticBlockEntity member : network.members.keySet()) {
+                if (member.getLevel() == null || member.getLevel().isClientSide
+                    || member.getLevel().getBlockEntity(member.getBlockPos()) != member) {
+                    continue;
+                }
+                member.networkDirty = true;
+                break;
+            }
+        }
+    }
+
     public static void invalidateFor(KineticBlockEntity member) {
         if (member == null || member.getLevel() == null || member.getLevel().isClientSide
             || !member.hasNetwork()) {
