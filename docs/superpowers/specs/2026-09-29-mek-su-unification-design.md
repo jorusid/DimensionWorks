@@ -23,7 +23,7 @@
 ## 网络计算
 
 ```text
-idleLoad       = effectiveRpm * 256
+idleLoad       = effectiveRpm * 8
 fullLoad       = max(idleLoad, Create 网络完整应力负载)
 requestedSu    = ceil(fullLoad)
 rpmQ           = min(1, bandwidthRpm / requestedRpm)
