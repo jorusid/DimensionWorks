@@ -73,12 +73,11 @@ class BasicMineralPropagationTest(unittest.TestCase):
         for suffix in suffixes:
             self.assertIn("recipePath + '" + suffix + "'", self.source)
 
-    def test_mekanism_combiner_uses_native_1201_json_shape(self) -> None:
-        self.assertIn("event.custom(JsonIO.of({", self.source)
-        self.assertIn("type: 'mekanism:combining'", self.source)
-        self.assertIn("mainInput:", self.source)
-        self.assertIn("extraInput:", self.source)
-        self.assertIn("amount: mineral.mekanismCarrierCount", self.source)
+    def test_mekanism_combiner_uses_counted_kubejs_integration_inputs(self) -> None:
+        self.assertIn("event.recipes.mekanism.combining(", self.source)
+        self.assertIn("'2x ' + item", self.source)
+        self.assertIn("mineral.mekanismCarrierCount + 'x ' + mineral.mekanismCarrier", self.source)
+        self.assertNotIn("event.custom(JsonIO.of({", self.source)
         self.assertIn("BASIC_MINERAL_RECIPES_REGISTERED", self.source)
 
     def test_high_value_targets_have_real_cost_escalation(self) -> None:
