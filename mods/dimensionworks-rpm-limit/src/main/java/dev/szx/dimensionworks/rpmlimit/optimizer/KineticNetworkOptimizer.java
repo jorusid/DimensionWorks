@@ -183,15 +183,27 @@ public final class KineticNetworkOptimizer {
         }
 
         KineticNetwork network = member.getOrCreateNetwork();
-        if (!updateStressContribution(network, member)) {
+        NetworkCache before = existingCache(network);
+        boolean cacheWasValid = before != null && before.stressValid;
+        boolean updated = updateStressContribution(network, member);
+
+        if (updated) {
+            if (isBatching()) {
+                queueNetwork(network);
+            } else {
+                // Create's existing tick path performs the refresh at the end of this member's tick.
+                member.networkDirty = true;
+            }
             return;
         }
 
-        if (isBatching()) {
-            queueNetwork(network);
-        } else {
-            // Create's existing tick path performs the network refresh at the end of this member's tick.
-            member.networkDirty = true;
+        NetworkCache after = existingCache(network);
+        if (cacheWasValid && (after == null || !after.stressValid)) {
+            if (isBatching()) {
+                queueNetwork(network);
+            } else {
+                member.networkDirty = true;
+            }
         }
     }
 
