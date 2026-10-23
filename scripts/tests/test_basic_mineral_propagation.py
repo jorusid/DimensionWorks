@@ -28,7 +28,7 @@ EXPECTED_ITEMS = (
     "mekanism:raw_lead",
     "mekanism:raw_osmium",
     "mekanism:raw_uranium",
-    "mekanism:fluorite",
+    "mekanism:fluorite_gem",
 )
 
 
@@ -99,7 +99,7 @@ class BasicMineralPropagationTest(unittest.TestCase):
             "mekanism:raw_lead",
             "mekanism:raw_osmium",
             "mekanism:raw_uranium",
-            "mekanism:fluorite",
+            "mekanism:fluorite_gem",
         ):
             self.assertIn(item, items)
 
