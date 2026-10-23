@@ -9,7 +9,7 @@ version = '0.3.6'
 group = 'dev.szx.dimensionworks'
 base.archivesName = 'dimensionworks_mek_stress'
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
-def rpmLimitVersion = '0.4.5'
+def rpmLimitVersion = '0.4.6'
 def rpmLimitJar = files("../dimensionworks-rpm-limit/build/libs/dimensionworks_rpm_limit-${rpmLimitVersion}.jar")
 
 minecraft {
