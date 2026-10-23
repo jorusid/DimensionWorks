@@ -385,7 +385,8 @@ is_preserved_server() {
         whitelist.json|banned-ips.json|banned-players.json|\
         update-dimensionworks-client.sh|update-dimensionworks-client.bat|\
         update-dimensionworks-server.sh|update-dimensionworks-server.bat|\
-        logs/*|crash-reports/*|debug/*|screenshots/*|world/*|world_nether/*|world_the_end/*)
+        logs/*|crash-reports/*|debug/*|screenshots/*|world/*|world_nether/*|world_the_end/*|\
+        config/*|defaultconfigs/*|plugins/LuckPerms/*|plugins/luckperms/*|luckperms/*)
             return 0
             ;;
     esac
@@ -719,12 +720,25 @@ stop_related_processes() {
     done
     if [[ ! -s "$targets" ]]; then printf '[第零步] 未发现可确认属于当前目录的 Minecraft/Java 进程。\n' >&2; rm -f "$table" "$targets" "$protected"; return; fi
     while read -r pid; do kill -TERM "$pid" 2>/dev/null || true; done < "$targets"
-    sleep 2
-    while read -r pid; do kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true; done < "$targets"
-    while read -r pid; do kill -0 "$pid" 2>/dev/null && remaining=1 || true; done < "$targets"
+    # Minecraft must finish saving level.dat and LuckPerms storage before files are replaced.
+    # Wait for a graceful JVM shutdown; never force-kill the server from an updater.
+    local waited=0
+    while [[ "$waited" -lt 180 ]]; do
+        remaining=0
+        while read -r pid; do
+            if kill -0 "$pid" 2>/dev/null; then remaining=1; fi
+        done < "$targets"
+        [[ "$remaining" -eq 0 ]] && break
+        sleep 1
+        waited=$((waited + 1))
+    done
+    remaining=0
+    while read -r pid; do
+        if kill -0 "$pid" 2>/dev/null; then remaining=1; fi
+    done < "$targets"
     rm -f "$table" "$targets" "$protected"
-    [[ "$remaining" -eq 0 ]] || die "仍有相关进程无法关闭，停止更新"
-    printf '[第零步] 相关进程已关闭。\n' >&2
+    [[ "$remaining" -eq 0 ]] || die "相关进程在 180 秒内未能正常退出。更新已中止，未强制结束进程以保护世界存档和 LuckPerms 数据；请手动执行 stop 后重试"
+    printf '[第零步] 相关进程已正常退出。\n' >&2
 }
 
 main() {

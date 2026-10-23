@@ -31,6 +31,9 @@ PRESERVED_TOKENS = {
         "debug",
         "screenshots",
         "world",
+        "config",
+        "defaultconfigs",
+        "LuckPerms",
         "eula.txt",
         "server.properties",
         "user_jvm_args.txt",
@@ -94,6 +97,9 @@ class UpdaterScriptContractTest(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 text = path.read_text(encoding="utf-8")
+                if name == "update-dimensionworks-server.sh":
+                    self.assertNotIn("kill -KILL", text, "server updater must not force-kill a saving server")
+                    self.assertIn('"$waited" -lt 180', text)
                 self.assertNotIn("powershell", text.lower())
                 self.assertNotIn("cmd.exe", text.lower())
 
@@ -512,16 +518,25 @@ class ShellServerFixtureTest(unittest.TestCase):
                 instance / "update-dimensionworks-server.sh",
             )
             (instance / "VERSION").write_text("0.0.1\n", encoding="ascii")
-            (instance / "world").mkdir()
-            (instance / "world" / "level.dat").write_bytes(b"world")
-            (instance / "server.properties").write_text("level-name=world\n", encoding="ascii")
+            (instance / "custom_world" / "serverconfig").mkdir(parents=True)
+            (instance / "custom_world" / "level.dat").write_bytes(b"keepInventory=true")
+            (instance / "custom_world" / "serverconfig" / "create-server.toml").write_bytes(b"maxRotationSpeed=10240")
+            (instance / "server.properties").write_text("level-name=custom_world\n", encoding="ascii")
             (instance / "eula.txt").write_text("eula=true\n", encoding="ascii")
+            (instance / "config" / "luckperms").mkdir(parents=True)
+            (instance / "config" / "luckperms" / "luckperms.conf").write_bytes(b"user-luckperms-config")
+            (instance / "config" / "luckperms" / "luckperms-h2-v2.mv.db").write_bytes(b"user-luckperms-database")
+            (instance / "defaultconfigs").mkdir()
+            (instance / "defaultconfigs" / "create-server.toml").write_bytes(b"user-world-default")
 
             first = fixture.write_server_package(
                 version="0.0.5",
                 files={
                     "mods/old.jar": b"old",
                     "config/server.cfg": b"old",
+                    "config/luckperms/luckperms.conf": b"bad-luckperms-default",
+                    "config/luckperms/luckperms-h2-v2.mv.db": b"bad-luckperms-database",
+                    "defaultconfigs/create-server.toml": b"bad-world-default",
                     "server.properties": b"bad-default",
                     "eula.txt": b"bad-default",
                 },
@@ -535,14 +550,21 @@ class ShellServerFixtureTest(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual((instance / "config" / "server.cfg").read_bytes(), b"old")
-            self.assertEqual((instance / "server.properties").read_text(), "level-name=world\n")
+            self.assertEqual((instance / "config" / "luckperms" / "luckperms.conf").read_bytes(), b"user-luckperms-config")
+            self.assertEqual((instance / "config" / "luckperms" / "luckperms-h2-v2.mv.db").read_bytes(), b"user-luckperms-database")
+            self.assertEqual((instance / "defaultconfigs" / "create-server.toml").read_bytes(), b"user-world-default")
+            self.assertEqual((instance / "server.properties").read_text(), "level-name=custom_world\n")
             self.assertEqual((instance / "eula.txt").read_text(), "eula=true\n")
+            (instance / "config" / "server.cfg").write_bytes(b"user-edited-config")
 
             second = fixture.write_server_package(
                 version="0.0.6",
                 files={
                     "mods/new.jar": b"new",
                     "config/server.cfg": b"new",
+                    "config/luckperms/luckperms.conf": b"new-luckperms-default",
+                    "config/luckperms/luckperms-h2-v2.mv.db": b"new-luckperms-database",
+                    "defaultconfigs/create-server.toml": b"new-world-default",
                     "server.properties": b"bad-default-2",
                 },
             )
@@ -556,8 +578,13 @@ class ShellServerFixtureTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertFalse((instance / "mods" / "old.jar").exists())
             self.assertEqual((instance / "mods" / "new.jar").read_bytes(), b"new")
-            self.assertEqual((instance / "world" / "level.dat").read_bytes(), b"world")
-            self.assertEqual((instance / "server.properties").read_text(), "level-name=world\n")
+            self.assertEqual((instance / "custom_world" / "level.dat").read_bytes(), b"keepInventory=true")
+            self.assertEqual((instance / "custom_world" / "serverconfig" / "create-server.toml").read_bytes(), b"maxRotationSpeed=10240")
+            self.assertEqual((instance / "config" / "server.cfg").read_bytes(), b"user-edited-config")
+            self.assertEqual((instance / "config" / "luckperms" / "luckperms.conf").read_bytes(), b"user-luckperms-config")
+            self.assertEqual((instance / "config" / "luckperms" / "luckperms-h2-v2.mv.db").read_bytes(), b"user-luckperms-database")
+            self.assertEqual((instance / "defaultconfigs" / "create-server.toml").read_bytes(), b"user-world-default")
+            self.assertEqual((instance / "server.properties").read_text(), "level-name=custom_world\n")
 
 
 

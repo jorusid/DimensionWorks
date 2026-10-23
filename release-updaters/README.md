@@ -13,6 +13,6 @@
 
 Windows 更新器由项目根目录的 `update-Windows/` Go 程序构建，不依赖 BAT、PowerShell 或 Python。GitHub Actions 会运行 Go 测试、交叉编译客户端与服务端 EXE，并把二者作为正式 Release 资产发布。失败时控制台会保留错误信息，并尽可能把诊断日志写入 `.dimensionworks-update/logs/`；下载与暂存文件会校验摘要，应用阶段支持事务回滚。
 
-更新前请先退出 Minecraft、启动器或服务端。客户端保留存档、日志、崩溃报告、截图和启动器私有数据；服务端保留世界、EULA、`server.properties`、JVM 参数、白名单、封禁、用户缓存和运行日志。服务端已经存在的运行配置不会被默认配置覆盖。状态与事务文件位于 `.dimensionworks-update/`；更新清单记录版本和受管文件摘要。
+更新前请先退出 Minecraft、启动器或服务端。客户端保留存档、日志、崩溃报告、截图和启动器私有数据；服务端保留世界（包括 `server.properties` 中指定的自定义世界名）、`config/`、`defaultconfigs/`、LuckPerms 配置与数据库、EULA、`server.properties`、JVM 参数、白名单、封禁、用户缓存和运行日志。已有配置只在缺失时从新包补齐，不会被默认配置覆盖。Shell 服务端更新器发送正常终止信号后最多等待 180 秒；若服务端未正常退出，会中止更新，绝不强制杀进程。状态与事务文件位于 `.dimensionworks-update/`；更新清单记录版本和受管文件摘要。
 
 macOS/Linux Shell 更新器需要系统 `bash`、`curl` 或 `wget`、`unzip` 和 SHA-256 工具。Windows 用户只需运行对应 EXE。

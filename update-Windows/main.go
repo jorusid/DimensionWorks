@@ -1159,7 +1159,7 @@ func bootstrapState(root, kind string) (*Manifest, error) {
 	state := &Manifest{Kind: kind, Version: "0.0.0", Release: "v0.0.0", Base: "none"}
 	seen := map[string]bool{}
 	addFile := func(rel string) error {
-		if reservedRelative(rel) || preservePath(kind, rel) || strings.EqualFold(rel, "VERSION") {
+		if reservedRelative(rel) || preservePath(root, kind, rel) || strings.EqualFold(rel, "VERSION") {
 			return nil
 		}
 		path, exists, err := securePath(root, rel)
@@ -1255,7 +1255,7 @@ func selectChanges(root, kind string, current, target *Manifest) ([]Entry, []str
 		if err != nil {
 			return nil, nil, err
 		}
-		if preserveExistingPath(kind, entry.Path, exists) {
+		if preserveExistingPath(root, kind, entry.Path, exists) {
 			continue
 		}
 		if exists {
@@ -1278,7 +1278,7 @@ func selectChanges(root, kind string, current, target *Manifest) ([]Entry, []str
 	deletions := make([]string, 0)
 	for _, old := range current.Entries {
 		key := strings.ToLower(old.Path)
-		if _, exists := targetEntries[key]; exists || preservePath(kind, old.Path) {
+		if _, exists := targetEntries[key]; exists || preservePath(root, kind, old.Path) {
 			continue
 		}
 		_, exists, err := securePath(root, old.Path)
@@ -1294,9 +1294,19 @@ func selectChanges(root, kind string, current, target *Manifest) ([]Entry, []str
 	return selected, deletions, nil
 }
 
-func preservePath(kind, rel string) bool {
+func preservePath(root, kind, rel string) bool {
 	normalized := strings.ToLower(strings.ReplaceAll(rel, "\\", "/"))
 	parts := strings.Split(normalized, "/")
+	if kind == "server" {
+		for _, prefix := range []string{"config/", "defaultconfigs/", "plugins/luckperms/", "luckperms/"} {
+			if strings.HasPrefix(normalized, prefix) {
+				return true
+			}
+		}
+		if configuredWorldPath(root, normalized) {
+			return true
+		}
+	}
 	if len(parts) > 0 {
 		switch parts[0] {
 		case ".dimensionworks-update", "logs", "crash-reports", "screenshots", "world", "world_nether", "world_the_end":
@@ -1321,17 +1331,37 @@ func preservePath(kind, rel string) bool {
 	return isUpdaterName(filepath.Base(normalized))
 }
 
-func preserveExistingPath(kind, rel string, exists bool) bool {
-	if !exists {
+func configuredWorldPath(root, rel string) bool {
+	data, err := os.ReadFile(filepath.Join(root, "server.properties"))
+	if err != nil {
 		return false
 	}
-	if kind == "server" {
-		switch strings.ToLower(rel) {
-		case "eula.txt", "server.properties", "user_jvm_args.txt", "usercache.json", "ops.json", "whitelist.json", "banned-ips.json", "banned-players.json":
+	worldName := ""
+	for _, line := range strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, value, ok := strings.Cut(line, "=")
+		if ok && strings.EqualFold(strings.TrimSpace(key), "level-name") {
+			worldName = strings.TrimSpace(value)
+			break
+		}
+	}
+	worldName = strings.ToLower(strings.ReplaceAll(worldName, "\\", "/"))
+	if worldName == "" || validateRelative(worldName) != nil {
+		return false
+	}
+	for _, candidate := range []string{worldName, worldName + "_nether", worldName + "_the_end"} {
+		if rel == candidate || strings.HasPrefix(rel, candidate+"/") {
 			return true
 		}
 	}
 	return false
+}
+
+func preserveExistingPath(root, kind, rel string, exists bool) bool {
+	return exists && preservePath(root, kind, rel)
 }
 
 type Change struct {

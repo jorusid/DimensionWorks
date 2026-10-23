@@ -150,6 +150,62 @@ func TestSelectChangesPreservesExistingServerRuntimeConfig(t *testing.T) {
 	}
 }
 
+
+func TestSelectChangesPreservesServerConfigsAndConfiguredWorld(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "server.properties"), []byte("level-name=custom_world\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"config/luckperms/luckperms.conf": "user-luckperms-config",
+		"config/luckperms/luckperms-h2-v2.mv.db": "user-luckperms-database",
+		"defaultconfigs/create-server.toml": "user-default-world-config",
+		"custom_world/level.dat": "keepInventory=true",
+		"custom_world/serverconfig/create-server.toml": "maxRotationSpeed=10240",
+		"config/removed-by-new-release.cfg": "user-config",
+	}
+	for rel, content := range files {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	oldEntries := []Entry{
+		{Action: "archive", Path: "config/luckperms/luckperms.conf", Algorithm: "sha256", Value: sha256Text("old-default"), Source: "config/luckperms/luckperms.conf"},
+		{Action: "archive", Path: "config/luckperms/luckperms-h2-v2.mv.db", Algorithm: "sha256", Value: sha256Text("old-database"), Source: "config/luckperms/luckperms-h2-v2.mv.db"},
+		{Action: "archive", Path: "defaultconfigs/create-server.toml", Algorithm: "sha256", Value: sha256Text("old-world-default"), Source: "defaultconfigs/create-server.toml"},
+		{Action: "archive", Path: "custom_world/level.dat", Algorithm: "sha256", Value: sha256Text("old-level"), Source: "custom_world/level.dat"},
+		{Action: "archive", Path: "custom_world/serverconfig/create-server.toml", Algorithm: "sha256", Value: sha256Text("old-serverconfig"), Source: "custom_world/serverconfig/create-server.toml"},
+		{Action: "archive", Path: "config/removed-by-new-release.cfg", Algorithm: "sha256", Value: sha256Text("old-config"), Source: "config/removed-by-new-release.cfg"},
+	}
+	newEntries := []Entry{
+		{Action: "archive", Path: "config/luckperms/luckperms.conf", Algorithm: "sha256", Value: sha256Text("new-default"), Source: "config/luckperms/luckperms.conf"},
+		{Action: "archive", Path: "config/luckperms/luckperms-h2-v2.mv.db", Algorithm: "sha256", Value: sha256Text("new-database"), Source: "config/luckperms/luckperms-h2-v2.mv.db"},
+		{Action: "archive", Path: "defaultconfigs/create-server.toml", Algorithm: "sha256", Value: sha256Text("new-world-default"), Source: "defaultconfigs/create-server.toml"},
+	}
+	current, err := parseManifest(manifestBytes("server", "0.1.38", "v0.1.37", oldEntries), "server")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := parseManifest(manifestBytes("server", "0.1.39", "v0.1.38", newEntries), "server")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected, deleted, err := selectChanges(root, "server", current, target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != 0 {
+		t.Fatalf("existing server config/data must not be overwritten: %#v", selected)
+	}
+	if len(deleted) != 0 {
+		t.Fatalf("existing config/world files must not be deleted: %#v", deleted)
+	}
+}
+
 func TestApplyTransactionRollsBackEarlierWrites(t *testing.T) {
 	root := t.TempDir()
 	original := filepath.Join(root, "config", "value.cfg")
