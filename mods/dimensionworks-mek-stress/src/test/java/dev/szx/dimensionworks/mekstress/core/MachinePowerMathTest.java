@@ -7,37 +7,37 @@ import org.junit.jupiter.api.Test;
 class MachinePowerMathTest {
 
     @Test
-    void chargesEightSuForEachEffectiveRpm() {
-        assertEquals(4_096L, MachinePowerMath.suForRpm(512.0F));
-        assertEquals(32_768L, MachinePowerMath.suForRpm(4_096.0F));
+    void chargesTwoHundredFiftySixSuForEachEffectiveRpm() {
+        assertEquals(131_072L, MachinePowerMath.suForRpm(512.0F));
+        assertEquals(1_048_576L, MachinePowerMath.suForRpm(4_096.0F));
         assertEquals(0L, MachinePowerMath.suForRpm(0.0F));
-        assertEquals(4_096L, MachinePowerMath.suForRpm(-512.0F));
+        assertEquals(131_072L, MachinePowerMath.suForRpm(-512.0F));
     }
 
     @Test
     void roundsFractionalRpmUpSoRunningMachinesNeverGetFreeTicks() {
-        assertEquals(4_097L, MachinePowerMath.suForRpm(512.125F));
+        assertEquals(131_104L, MachinePowerMath.suForRpm(512.125F));
     }
 
     @Test
     void keepsAnIdleGearboxRunningWithoutChangingSingleMachineLoad() {
-        assertEquals(4_096.0D, MachinePowerMath.gearboxLoad(0.0D, 512), 1.0E-9D);
-        assertEquals(4_096.0D, MachinePowerMath.gearboxLoad(4_096.0D, 512), 1.0E-9D);
-        assertEquals(12_288.0D, MachinePowerMath.gearboxLoad(12_288.0D, 512), 1.0E-9D);
+        assertEquals(131_072.0D, MachinePowerMath.gearboxLoad(0.0D, 512), 1.0E-9D);
+        assertEquals(131_072.0D, MachinePowerMath.gearboxLoad(131_072.0D, 512), 1.0E-9D);
+        assertEquals(262_144.0D, MachinePowerMath.gearboxLoad(262_144.0D, 512), 1.0E-9D);
         assertEquals(0.0D, MachinePowerMath.gearboxLoad(4_096.0D, 0), 1.0E-9D);
     }
 
     @Test
     void convertsEffectiveRpmScaleIntoPerRpmStress() {
-        assertEquals(8.0F, MachinePowerMath.stressPerRpm(1.0F), 1.0E-6F);
-        assertEquals(2.0F, MachinePowerMath.stressPerRpm(0.25F), 1.0E-6F);
+        assertEquals(256.0F, MachinePowerMath.stressPerRpm(1.0F), 1.0E-6F);
+        assertEquals(64.0F, MachinePowerMath.stressPerRpm(0.25F), 1.0E-6F);
         assertEquals(0.0F, MachinePowerMath.stressPerRpm(-1.0F), 1.0E-6F);
     }
 
     @Test
     void multipliesPerRpmStressByActualNetworkSpeed() {
-        assertEquals(32_768.0D, MachinePowerMath.actualStress(8.0F, 4_096.0F), 1.0E-6D);
-        assertEquals(32_768.0D, MachinePowerMath.actualStress(8.0F, -4_096.0F), 1.0E-6D);
+        assertEquals(1_048_576.0D, MachinePowerMath.actualStress(256.0F, 4_096.0F), 1.0E-6D);
+        assertEquals(1_048_576.0D, MachinePowerMath.actualStress(256.0F, -4_096.0F), 1.0E-6D);
         assertEquals(0.0D, MachinePowerMath.actualStress(8.0F, 0.0F), 1.0E-6D);
     }
 
