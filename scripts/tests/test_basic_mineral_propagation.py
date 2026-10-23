@@ -55,9 +55,9 @@ class BasicMineralPropagationTest(unittest.TestCase):
 
     def test_every_target_declares_three_recipe_styles(self) -> None:
         suffixes = (
-            "/mechanical_growth",
-            "/mekanism_combining",
-            "/residue_recovery",
+            "mechanical_growth",
+            "mekanism_combining",
+            "residue_recovery",
         )
         for line in self.lines:
             with self.subTest(item=line["item"]):
