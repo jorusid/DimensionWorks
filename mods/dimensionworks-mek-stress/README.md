@@ -35,7 +35,7 @@ KubeJS 会把 `memory_drive_ddr1..5` 和 DDR1～5 × 六形态共 30 个 `memory
 ## 应力守恒
 
 ```text
-idleLoad       = effectiveRpm * 8
+idleLoad       = effectiveRpm * 256
 fullLoad       = max(idleLoad, Create 网络完整应力负载)
 requestedSu    = ceil(fullLoad)
 rpmQ           = min(1, bandwidthRpm / requestedRpm)
@@ -47,7 +47,7 @@ chargedSu      = requiredSu
 perRpmCapacity = chargedSu / outputRpm
 ```
 
-空载 EXPORT 齿轮箱的基础负载为 `有效 RPM × 8`。接入下游机器时取“基础负载”与“实际完整应力负载”的较大值，因此单台标准机器仍保持原有 `RPM × 8` 标定，多台机器会继续按总负载增长。
+空载 EXPORT 齿轮箱的基础负载仍为 `有效 RPM × 8`；Mekanism 机器本身按 `有效 RPM × 256` 计费。接入下游机器时取“基础负载”与“实际完整应力负载”的较大值，因此单台标准机器仍保持原有 `RPM × 256` 标定，多台机器会继续按总负载增长。
 
 ME Gearbox EXPORT 只有在有效 RPM、实际输出 RPM、实际扣费和 `q > 0` 全部有效时才运行；任一条件缺失都会同时清除输出速度与宣告容量。`storedSu < requiredSu` 时整台齿轮箱无能量输出，不允许用库存比例赊速；RPM 带宽不足时则按比例输出转速。没有下游机器时，齿轮箱仍按基础负载运行。
 
@@ -58,7 +58,7 @@ ME Gearbox EXPORT 向 Create 网络宣告的容量严格等于本次实际扣除
 ## Jade
 
 - 所有 Mekanism 方块的 Mekanism FE/J 元素，以及 Jade 通用 FE/J provider 对 Mekanism 方块的显示，都被移除。
-- 本 Mod 的 MEK Jade 条目显示当前有效 RPM、`RPM × 8` 的 SU/t 占用和当前工作倍率。
+- 本 Mod 的 MEK Jade 条目显示当前有效 RPM、`RPM × 256` 的 SU/t 占用和当前工作倍率。
 - MEK Jade 的“生产倍率”显示端到端吞吐倍率：低于目标时小于 `1x`，达到目标为 `1x`，高于目标时按比例大于 `1x`；配方内部仍不会在低转速时重复放大产出，避免二次取产。
 - 非加工 MEK 设备仍不会出现本 Mod 的机械动力条目。
 
