@@ -2,6 +2,7 @@ package dev.szx.dimensionworks.rpmlimit;
 
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import dev.szx.dimensionworks.rpmlimit.mixin.ChunkMapAccessor;
+import dev.szx.dimensionworks.rpmlimit.optimizer.KineticNetworkOptimizer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ChunkHolder;
@@ -246,6 +247,9 @@ public final class RpmLimitManager {
             return false;
         data.putInt(MACHINE_LIMIT_KEY, value);
         k.setChanged();
+        // Cached stress/capacity depend on the effective RPM limit, not only Create's raw speed.
+        KineticNetworkOptimizer.invalidateFor(k);
+        k.networkDirty = true;
         return true;
     }
 
