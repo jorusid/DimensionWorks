@@ -2,6 +2,7 @@ package dev.szx.dimensionworks.mekstress.memory;
 
 import com.simibubi.create.content.kinetics.KineticNetwork;
 import dev.szx.dimensionworks.mekstress.core.MachinePowerMath;
+import dev.szx.dimensionworks.rpmlimit.optimizer.KineticNetworkOptimizer;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -31,18 +32,22 @@ public final class MachineKineticRegistry {
 
             if (previous != network) {
                 if (previous != null) {
+                    KineticNetworkOptimizer.invalidate(previous);
                     previous.members.remove(member);
                 }
                 member.dimensionworks$bindNetwork(network);
             }
             if (previous != network || !wasAttached) {
+                KineticNetworkOptimizer.invalidate(network);
                 network.members.put(member, MachinePowerMath.stressPerRpm(1.0F));
             }
 
             if (previous != null && previous != network) {
+                KineticNetworkOptimizer.invalidate(previous);
                 previous.updateNetwork();
             }
             if (previous != network || !wasAttached || Float.compare(previousRpm, rpm) != 0) {
+                KineticNetworkOptimizer.invalidate(network);
                 network.updateNetwork();
             }
         }
@@ -57,6 +62,7 @@ public final class MachineKineticRegistry {
             KineticNetwork network = member.dimensionworks$boundNetwork();
             member.dimensionworks$unbindNetwork();
             if (network != null) {
+                KineticNetworkOptimizer.invalidate(network);
                 network.members.remove(member);
                 network.updateNetwork();
             }
