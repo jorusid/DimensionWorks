@@ -693,7 +693,7 @@ stop_related_processes() {
     table="$(mktemp "${TMPDIR:-/tmp}/dw-processes.XXXXXX")" || die "无法创建进程检查临时文件"
     ps -axo pid=,ppid=,command= > "$table" || { rm -f "$table"; die "无法枚举进程"; }
     targets="$table.targets"; protected="$table.protected"; : > "$targets"; : > "$protected"
-    cursor="$"
+    cursor="$$"
     while [[ "$cursor" =~ ^[0-9]+$ ]] && [[ "$cursor" -gt 1 ]]; do
         local parent_line parent_cmd
         parent_line="$(awk -v id="$cursor" '$1==id {sub(/^[[:space:]]*[0-9]+[[:space:]]+[0-9]+[[:space:]]+/, ""); print; exit}' "$table")"

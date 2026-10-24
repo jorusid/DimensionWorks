@@ -252,6 +252,37 @@ class ShellClientFixtureTest(unittest.TestCase):
         self.assertEqual((self.instance / "saves" / "keep" / "level.dat").read_bytes(), b"keep")
         self.assertEqual((self.instance / "VERSION").read_text(), "0.0.3\n")
 
+    def test_updater_path_containing_minecraft_does_not_kill_itself(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT) as temp:
+            fixture = FixtureFactory(temp)
+            package = fixture.write_client_package(
+                version="0.0.2",
+                files={"config/value.cfg": b"new"},
+            )
+            minecraft_instance = Path(temp) / "minecraft" / "DimensionWorks"
+            minecraft_instance.mkdir(parents=True)
+            shutil.copy2(
+                UPDATERS / "update-dimensionworks-client.sh",
+                minecraft_instance / "update-dimensionworks-client.sh",
+            )
+            (minecraft_instance / "VERSION").write_text("0.0.1\n", encoding="ascii")
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(minecraft_instance / "update-dimensionworks-client.sh"),
+                    "--package",
+                    str(package),
+                ],
+                cwd=minecraft_instance,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
+            self.assertEqual((minecraft_instance / "VERSION").read_text(), "0.0.2\n")
+
     def test_failed_update_rolls_back_changed_file_and_preserves_private_data(self) -> None:
         package = self.fixture.write_client_package(
             version="0.0.4",
@@ -382,6 +413,37 @@ class ShellClientFixtureTest(unittest.TestCase):
 
 
 class ShellServerFixtureTest(unittest.TestCase):
+    def test_updater_path_containing_minecraft_does_not_kill_itself(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT) as temp:
+            fixture = FixtureFactory(temp)
+            package = fixture.write_server_package(
+                version="0.0.2",
+                files={"mods/value.jar": b"new"},
+            )
+            minecraft_instance = Path(temp) / "minecraft" / "DimensionWorks"
+            minecraft_instance.mkdir(parents=True)
+            shutil.copy2(
+                UPDATERS / "update-dimensionworks-server.sh",
+                minecraft_instance / "update-dimensionworks-server.sh",
+            )
+            (minecraft_instance / "VERSION").write_text("0.0.1\n", encoding="ascii")
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(minecraft_instance / "update-dimensionworks-server.sh"),
+                    "--package",
+                    str(package),
+                ],
+                cwd=minecraft_instance,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
+            self.assertEqual((minecraft_instance / "VERSION").read_text(), "0.0.2\n")
+
     def test_release_url_uses_server_delta_without_full_package(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             fixture = FixtureFactory(temp)
