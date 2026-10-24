@@ -60,5 +60,15 @@ class InRepoModResourceContractTest(unittest.TestCase):
         self.assertEqual(model["textures"]["layer0"], "minecraft:block/redstone_torch")
 
 
+class GearHeartRecipeContractTest(unittest.TestCase):
+    def test_repair_fragment_ids_are_concrete_strings(self) -> None:
+        source = (ROOT / "kubejs" / "server_scripts" / "gear_heart_recipes.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("Array.from(", source)
+        for index in range(1, 8):
+            self.assertIn(f"kubejs:gear_heart_repair_fragment_{index}", source)
+
+
 if __name__ == "__main__":
     unittest.main()

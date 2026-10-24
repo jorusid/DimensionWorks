@@ -1,6 +1,12 @@
-const repairFragmentIds = Array.from({ length: 7 }, (_, index) =>
-  `kubejs:gear_heart_repair_fragment_${index + 1}`
-)
+const repairFragmentIds = [
+  'kubejs:gear_heart_repair_fragment_1',
+  'kubejs:gear_heart_repair_fragment_2',
+  'kubejs:gear_heart_repair_fragment_3',
+  'kubejs:gear_heart_repair_fragment_4',
+  'kubejs:gear_heart_repair_fragment_5',
+  'kubejs:gear_heart_repair_fragment_6',
+  'kubejs:gear_heart_repair_fragment_7'
+]
 
 ServerEvents.recipes(event => {
   const register = (json, id) => {
