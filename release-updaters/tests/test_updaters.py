@@ -252,6 +252,20 @@ class ShellClientFixtureTest(unittest.TestCase):
         self.assertEqual((self.instance / "saves" / "keep" / "level.dat").read_bytes(), b"keep")
         self.assertEqual((self.instance / "VERSION").read_text(), "0.0.3\n")
 
+    def test_rerun_restores_deleted_managed_file_despite_valid_state(self) -> None:
+        package = self.fixture.write_client_package(
+            version="0.0.2",
+            files={"config/managed.cfg": b"managed"},
+        )
+        first = self.run_script(package)
+        self.assertEqual(first.returncode, 0, first.stderr)
+
+        (self.instance / "config" / "managed.cfg").unlink()
+        second = self.run_script(package)
+
+        self.assertEqual(second.returncode, 0, second.stdout + "\n" + second.stderr)
+        self.assertEqual((self.instance / "config" / "managed.cfg").read_bytes(), b"managed")
+
     def test_updater_path_containing_minecraft_does_not_kill_itself(self) -> None:
         with tempfile.TemporaryDirectory(dir=ROOT) as temp:
             fixture = FixtureFactory(temp)
@@ -443,6 +457,46 @@ class ShellServerFixtureTest(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stdout + "\n" + result.stderr)
             self.assertEqual((minecraft_instance / "VERSION").read_text(), "0.0.2\n")
+
+    def test_rerun_restores_deleted_managed_file_despite_valid_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            fixture = FixtureFactory(temp)
+            instance = Path(temp) / "server"
+            instance.mkdir()
+            shutil.copy2(
+                UPDATERS / "update-dimensionworks-server.sh",
+                instance / "update-dimensionworks-server.sh",
+            )
+            package = fixture.write_server_package(
+                version="0.0.2",
+                files={"mods/managed.jar": b"managed"},
+            )
+            command = [
+                "bash",
+                str(instance / "update-dimensionworks-server.sh"),
+                "--package",
+                str(package),
+            ]
+            first = subprocess.run(
+                command,
+                cwd=instance,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(first.returncode, 0, first.stderr)
+
+            (instance / "mods" / "managed.jar").unlink()
+            second = subprocess.run(
+                command,
+                cwd=instance,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(second.returncode, 0, second.stdout + "\n" + second.stderr)
+            self.assertEqual((instance / "mods" / "managed.jar").read_bytes(), b"managed")
 
     def test_release_url_uses_server_delta_without_full_package(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

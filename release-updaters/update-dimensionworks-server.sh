@@ -303,7 +303,7 @@ state_digest_for_path() {
 }
 
 try_delta() {
-    local target_base="$1" delta_url delta_zip delta_entries delta_root action path algorithm value source old_digest
+    local target_base="$1" delta_url delta_zip delta_entries delta_root action path algorithm value source
     if [[ -z "$MANIFEST_URL" ]]; then
         printf '[差量] 跳过：目标更新清单 URL 不可用。\\n' >&2
         return 1
@@ -342,8 +342,11 @@ try_delta() {
             [[ "$(sha_file 256 "$ROOT_DIR/$path")" == "$value" ]]; then
             continue
         fi
-        old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
-        [[ "$old_digest" == "$value" ]] && continue
+        if [[ -f "$ROOT_DIR/$path" ]]; then
+            local old_digest
+            old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
+            [[ "$old_digest" == "$value" ]] && continue
+        fi
         if [[ ! -f "$delta_root/$source" || -L "$delta_root/$source" ]]; then
             printf '[差量校验] 本地文件与目标版本不同，但差量包不包含：%s（源：%s）。需要完整包恢复该文件。\\n' "$path" "$source" >&2
             return 1
@@ -861,9 +864,11 @@ main() {
                    [[ "$(sha_file 256 "$ROOT_DIR/$path")" == "$value" ]]; then
                     continue
                 fi
-                local old_digest
-                old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
-                [[ "$old_digest" == "$value" ]] && continue
+                if [[ -f "$ROOT_DIR/$path" ]]; then
+                    local old_digest
+                    old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
+                    [[ "$old_digest" == "$value" ]] && continue
+                fi
                 local archive_source="$PACKAGE_ROOT/$source"
                 [[ -f "$archive_source" && ! -L "$archive_source" ]] ||
                     die "完整包缺少受管文件：$source"

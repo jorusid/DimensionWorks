@@ -271,12 +271,6 @@ validate_zip() {
     fi
 }
 
-state_digest_for_path() {
-    local state_file="$1" wanted_path="$2"
-    [[ -f "$state_file" ]] || return 0
-    awk -F '\t' -v wanted="$wanted_path" 'NR > 6 && $2 == wanted { print $4; exit }' "$state_file"
-}
-
 manifest_is_valid() {
     local path="$1"
     [[ -f "$path" ]] || return 1
@@ -307,6 +301,11 @@ validate_manifest() {
     manifest_is_valid "$1" || die "更新清单格式无效：$1"
 }
 
+state_digest_for_path() {
+    local state_file="$1" wanted_path="$2"
+    [[ -f "$state_file" ]] || return 0
+    awk -F '\t' -v wanted="$wanted_path" 'NR > 6 && $2 == wanted { print $4; exit }' "$state_file"
+}
 
 is_preserved_client() {
     case "$1" in
@@ -714,7 +713,11 @@ main() {
     while IFS=$'\t' read -r action path algorithm value source; do
         [[ "$action" == "archive" ]] || continue
         if is_preserved_client "$path"; then continue; fi
-        if [[ ! -f "$ROOT_DIR/$path" ]] || [[ "$(sha_file 256 "$ROOT_DIR/$path")" != "$value" ]]; then
+        if [[ ! -f "$ROOT_DIR/$path" ]]; then
+            archive_needed=1
+            break
+        fi
+        if [[ "$(sha_file 256 "$ROOT_DIR/$path")" != "$value" ]]; then
             local old_digest
             old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
             [[ "$old_digest" == "$value" ]] && continue
@@ -742,9 +745,11 @@ main() {
                         if [[ -f "$ROOT_DIR/$path" ]] && [[ "$(sha_file 256 "$ROOT_DIR/$path")" == "$value" ]]; then
                             continue
                         fi
-                        local old_digest
-                        old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
-                        [[ "$old_digest" == "$value" ]] && continue
+                        if [[ -f "$ROOT_DIR/$path" ]]; then
+                            local old_digest
+                            old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
+                            [[ "$old_digest" == "$value" ]] && continue
+                        fi
                         if [[ ! -f "$delta_root/$source" ]]; then
                             printf '[差量校验] 本地文件与目标版本不同，但差量包不包含：%s（源：%s）。需要完整包恢复该文件。\\n' "$path" "$source" >&2
                             delta_ready=0
@@ -806,9 +811,11 @@ main() {
                    [[ "$(sha_file 256 "$ROOT_DIR/$path")" == "$value" ]]; then
                     continue
                 fi
-                local old_digest
-                old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
-                [[ "$old_digest" == "$value" ]] && continue
+                if [[ -f "$ROOT_DIR/$path" ]]; then
+                    local old_digest
+                    old_digest="$(state_digest_for_path "$ROOT_DIR/$STATE_REL" "$path")"
+                    [[ "$old_digest" == "$value" ]] && continue
+                fi
                 local archive_source="$PACKAGE_ROOT/$source"
                 [[ -f "$archive_source" && ! -L "$archive_source" ]] ||
                     die "完整包缺少受管文件：$source"

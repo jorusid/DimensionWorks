@@ -126,6 +126,27 @@ func TestSelectChangesPreservesUnchangedUserModifiedClientConfig(t *testing.T) {
 	}
 }
 
+func TestSelectChangesRestoresDeletedManagedFile(t *testing.T) {
+	root := t.TempDir()
+	entry := Entry{Action: "archive", Path: "mods/managed.jar", Algorithm: "sha256", Value: sha256Text("pack"), Source: "mods/managed.jar"}
+	current, err := parseManifest(manifestBytes("client", "0.2.3", "v0.2.3", []Entry{entry}), "client")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := parseManifest(manifestBytes("client", "0.2.3", "v0.2.3", []Entry{entry}), "client")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	selected, deleted, err := selectChanges(root, "client", current, target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != 1 || selected[0].Path != entry.Path {
+		t.Fatalf("deleted managed file must be restored: selected=%#v deleted=%#v", selected, deleted)
+	}
+}
+
 func TestSelectChangesPreservesExistingServerRuntimeConfig(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "server.properties"), []byte("level-name=myworld\n"), 0644); err != nil {

@@ -1,7 +1,7 @@
 # DimensionWorks Cave Factory
 
 `dimensionworks_cave_factory` 为 Alex's Caves 六个洞穴维度提供统一的后期工厂骨架。
-当前版本为 `0.1.0`，首个里程碑只让渊海陷窟具备完整生存行为和实际配方。
+当前版本为 `0.1.1`，首个里程碑只让渊海陷窟具备完整生存行为和实际配方。
 
 ## 已实现
 
