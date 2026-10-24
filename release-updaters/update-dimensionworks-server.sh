@@ -80,13 +80,25 @@ download_once() {
     fi
 }
 
-download_resume() {
+download_forever() {
     local url="$1" destination="$2"
-    printf '[下载] 从已有部分文件继续：%s\n' "$url" >&2
+    printf '[下载] 人工续传，不限制总时长：%s\n' "$url" >&2
     if command -v curl >/dev/null 2>&1; then
-        curl --fail --location --progress-bar --show-error --connect-timeout 10 --max-time 120 --continue-at - --output "$destination" "$url"
+        curl --fail --location --progress-bar --show-error --continue-at - --output "$destination" "$url"
     elif command -v wget >/dev/null 2>&1; then
-        wget --timeout=120 --tries=1 --continue --output-document="$destination" "$url"
+        wget --tries=1 --continue --output-document="$destination" "$url"
+    else
+        return 127
+    fi
+}
+
+download_forever_full() {
+    local url="$1" destination="$2"
+    printf '[下载] 人工重下，不限制总时长：%s\n' "$url" >&2
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --location --progress-bar --show-error --output "$destination" "$url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget --tries=1 --progress=bar:force --output-document="$destination" "$url"
     else
         return 127
     fi
@@ -165,14 +177,13 @@ try_download() {
                 candidate="${candidates[$best_index]}"
                 [[ -f "${partials[$best_index]}" ]] || : > "${partials[$best_index]}"
                 while true; do
-                    if download_resume "$candidate" "${partials[$best_index]}"; then
+                    if download_forever "$candidate" "${partials[$best_index]}"; then
                         mv -f -- "${partials[$best_index]}" "$destination"
                         rm -f -- "${partials[@]}"
                         return 0
                     fi
-                    # Some mirrors ignore HTTP Range. Retry from zero on the same chosen source
-                    # instead of looping forever on an unsupported resume request.
-                    if download_once "$candidate" "${partials[$best_index]}" 120; then
+                    # Some mirrors ignore HTTP Range. Retry from zero on the same chosen source.
+                    if download_forever_full "$candidate" "${partials[$best_index]}"; then
                         mv -f -- "${partials[$best_index]}" "$destination"
                         rm -f -- "${partials[@]}"
                         return 0

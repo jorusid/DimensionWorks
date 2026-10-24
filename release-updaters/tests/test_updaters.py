@@ -73,6 +73,12 @@ class UpdaterScriptContractTest(unittest.TestCase):
                 self.assertIn(".dimensionworks-update", text)
                 self.assertIn("state.tsv", text)
                 self.assertIn("VERSION", text)
+                self.assertIn("download_forever", text)
+                self.assertIn('download_forever "$candidate"', text)
+                forever_block = text.split("download_forever()", 1)[1].split("download_forever_full()", 1)[0]
+                self.assertNotIn("--max-time", forever_block)
+                self.assertNotIn("--timeout", forever_block)
+                self.assertNotIn("--connect-timeout", forever_block)
                 if name.endswith(".bat"):
                     self.assertIn("New-BootstrapState", text)
                     self.assertIn("serverRuntimeNames", text)
@@ -675,7 +681,7 @@ exit 28
                 self.assertIn("所有下载源均失败", result.stdout)
                 self.assertIn("已下载 300 字节", result.stdout)
                 self.assertIn("gh-proxy.com", result.stdout)
-                self.assertIn("从已有部分文件继续", result.stderr)
+                self.assertIn("人工续传，不限制总时长", result.stderr)
                 if kind == "client":
                     self.assertEqual((instance / "config/recovery.cfg").read_bytes(), b"recovered")
                 else:
