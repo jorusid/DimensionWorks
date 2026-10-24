@@ -33,7 +33,7 @@ side="BOTH"
 [[dependencies.dimensionworks_mek_stress]]
 modId="mekanism"
 mandatory=true
-versionRange="[10.4.16.80,10.4.16.81)"
+versionRange="[10.4.16,10.5)"
 ordering="AFTER"
 side="BOTH"
 

@@ -43,6 +43,15 @@ class ReleaseWorkflowTest(unittest.TestCase):
         self.assertIn('"--dimension-complete"', text)
         self.assertIn("dimension_complete=args.dimension_complete", text)
 
+    def test_mekanism_dependency_accepts_runtime_mod_version(self) -> None:
+        for relative in (
+            "mods/dimensionworks-rpm-limit/src/main/resources/META-INF/mods.toml",
+            "mods/dimensionworks-mek-stress/src/main/resources/META-INF/mods.toml",
+        ):
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            self.assertIn('modId="mekanism"', text)
+            self.assertIn('versionRange="[10.4.16,10.5)"', text)
+
 
 if __name__ == "__main__":
     unittest.main()
