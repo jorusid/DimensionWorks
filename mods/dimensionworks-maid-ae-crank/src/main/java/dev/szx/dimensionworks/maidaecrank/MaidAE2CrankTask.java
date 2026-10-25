@@ -28,7 +28,7 @@ public final class MaidAE2CrankTask implements IMaidTask {
     @Override
     public ItemStack getIcon() {
         if (icon == null) {
-            icon = AEBlocks.CRANK.asStack();
+            icon = new ItemStack(AEBlocks.CRANK.asItem());
         }
         return icon;
     }
