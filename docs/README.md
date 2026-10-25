@@ -4,6 +4,8 @@
 
 已建立：
 
+- [`gameplay/industrial-assessment.md`](gameplay/industrial-assessment.md)：以高中化学课程标准为参考的工业能力考核体系、任务设计规则与绕过审查
+
 - [`dimensions.md`](dimensions.md)：六维洞穴的长期工业职责
 - [`resources.md`](resources.md)：洞穴资源与效果流体生态
 - [`logistics.md`](logistics.md)：跨维物品与流体接口
