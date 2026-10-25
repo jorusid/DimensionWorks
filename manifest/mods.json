@@ -445,6 +445,16 @@
       "url": "https://github.com/szx-jn/DimensionWorks/tree/main/mods/dimensionworks-localization"
     },
     {
+      "id": "dimensionworks_maid_ae_crank",
+      "name": "DimensionWorks Maid AE2 Crank",
+      "source": "in-repo",
+      "project_path": "mods/dimensionworks-maid-ae-crank",
+      "version": "0.1.0",
+      "required": true,
+      "environment": "both",
+      "url": "https://github.com/szx-jn/DimensionWorks/tree/main/mods/dimensionworks-maid-ae-crank"
+    },
+    {
       "id": "dimensionworks_mek_stress",
       "name": "DimensionWorks ME Mechanical Power",
       "source": "in-repo",
