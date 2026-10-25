@@ -26,6 +26,7 @@ jobs:
           - dimensionworks-cave-factory
           - dimensionworks-drop-lifetime
           - dimensionworks-localization
+          - dimensionworks-maid-ae-crank
           - dimensionworks-mek-stress
           - dimensionworks-rpm-limit
           - dimensionworks-transfer
