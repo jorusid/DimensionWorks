@@ -156,6 +156,28 @@ public final class GearHeartState {
         return repairedMask & ALL_CURSES;
     }
 
+    public static ItemStack reopenCurse(ItemStack current, int curseIndex) {
+        if (current == null || current.isEmpty() || curseIndex < 1 || curseIndex > 7
+            || !isGearHeart(current)) {
+            return ItemStack.EMPTY;
+        }
+
+        Item normalItem = ForgeRegistries.ITEMS.getValue(NORMAL_ID);
+        if (normalItem == null) {
+            return ItemStack.EMPTY;
+        }
+
+        int bit = REPAIR_FRAGMENT_BITS[curseIndex - 1];
+        ItemStack reopened = new ItemStack(normalItem);
+        CompoundTag tag = current.getTag();
+        if (tag != null) {
+            reopened.setTag(tag.copy());
+        }
+        setRepairedMask(reopened, getRepairedMask(current) & ~bit);
+        reopened.getOrCreateTag().putInt("CustomModelData", 1);
+        return reopened;
+    }
+
     public static ItemStack finalizeRepair(ItemStack repaired) {
         Item item = ForgeRegistries.ITEMS.getValue(ENCHANTED_ID);
         if (item == null) {
