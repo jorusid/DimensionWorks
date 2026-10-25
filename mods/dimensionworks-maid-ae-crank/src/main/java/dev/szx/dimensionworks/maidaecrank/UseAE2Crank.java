@@ -115,10 +115,10 @@ public final class UseAE2Crank extends MaidCheckRateTask {
         BlockPos max = center.offset(radius, 4, radius);
 
         return BlockPos.betweenClosedStream(min, max)
+                .map(BlockPos::immutable)
                 .filter(pos -> level.getBlockEntity(pos) instanceof CrankBlockEntity)
                 .filter(pos -> canTurn(level, pos))
                 .min(Comparator.comparingDouble(pos -> maid.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)))
-                .map(BlockPos::immutable)
                 .orElse(null);
     }
 
