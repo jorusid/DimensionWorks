@@ -53,6 +53,14 @@ jobs:
         working-directory: mods/${{ matrix.module }}
         run: gradle build --no-daemon
 
+      - name: Upload built JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.module }}-jar
+          path: mods/${{ matrix.module }}/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
