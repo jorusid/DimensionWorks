@@ -1,0 +1,4 @@
+{
+  "task.dimensionworks_maid_ae_crank.ae2_crank_task": "AE2 手摇曲柄",
+  "task.dimensionworks_maid_ae_crank.ae2_crank_task.desc": "自动寻找附近可用的 AE2 木制曲柄并为其供能。需要曲柄连接到可手摇的 AE2 方块。"
+}
