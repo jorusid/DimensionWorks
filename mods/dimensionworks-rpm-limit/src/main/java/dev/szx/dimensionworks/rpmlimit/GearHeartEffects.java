@@ -213,9 +213,19 @@ public final class GearHeartEffects {
 
     private static void syncQuotaState(ServerPlayer player, ItemStack heart) {
         int repairedMask = GearHeartState.getRepairedMask(heart);
-        int rpm = GearHeartState.isRepairApplied(repairedMask, GearHeartState.ROTATION_SPEED)
+        boolean rotationRepaired =
+            GearHeartState.isRepairApplied(repairedMask, GearHeartState.ROTATION_SPEED);
+        int rpm = rotationRepaired
             ? RpmLimitConfig.GEAR_HEART_ROTATION_REPAIRED_RPM.get()
             : RpmLimitConfig.GEAR_HEART_ROTATION_CURSED_RPM.get();
+
+        // External limits are restrictive caps (min(base limit, external limit)). A repaired
+        // Gear Heart therefore cannot raise the default 32 RPM limit merely by setting a 512 RPM
+        // external cap. Promote the persisted player limit once, on repair/login, so the repaired
+        // state survives logout and already-existing worlds are migrated without per-tick writes.
+        if (rotationRepaired && RpmLimitApi.getLimit(player) < rpm) {
+            RpmLimitApi.setLimit(player, rpm);
+        }
         RpmLimitApi.setExternalLimit(player, RPM_SOURCE, rpm);
     }
 
