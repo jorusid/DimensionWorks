@@ -24,8 +24,8 @@ import java.util.Locale;
  *
  * <p>Extra batches are applied only at the points where a machine would normally finish one
  * operation. The machine's full {@code tick()} is never re-run, so running state and render
- * animations advance exactly once per game tick. Visual speed is capped separately at each
- * machine's native saturation point.
+ * animations advance exactly once per game tick. Rendering uses the same effective RPM limit
+ * as the kinetic network, without an extra visual saturation cap.
  *
  * <p>The multiplier uses the player-limited effective speed but reads the raw theoretical value
  * directly, so an overstressed network does not drop to 0 RPM and make its own stress oscillate.
@@ -73,22 +73,13 @@ public final class OverspeedBonus {
     }
 
     /**
-     * Speed used exclusively by renderers. Work logic continues to read the real network speed;
-     * animation stops scaling once this machine reaches the speed where its native processing
-     * already saturates.
+     * Speed used by renderers. Keep it aligned with the effective kinetic network speed;
+     * processing saturation limits extra work, not the machine's visible rotation.
      */
     public static float animationSpeed(KineticBlockEntity be) {
         if (be.isOverStressed())
             return 0;
-
-        float speed = RpmLimitManager.clamp(be, be.getTheoreticalSpeed());
-        if (!RpmLimitConfig.OVERSPEED_ENABLED.get() || speed == 0)
-            return speed;
-
-        double cap = saturationOf(be);
-        if (cap <= 0 || Math.abs(speed) <= cap)
-            return speed;
-        return (float) Math.copySign(cap, speed);
+        return RpmLimitManager.clamp(be, be.getTheoreticalSpeed());
     }
 
     /**
