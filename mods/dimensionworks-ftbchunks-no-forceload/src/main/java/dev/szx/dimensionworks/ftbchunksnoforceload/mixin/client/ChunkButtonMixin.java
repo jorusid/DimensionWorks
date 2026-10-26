@@ -1,13 +1,15 @@
 package dev.szx.dimensionworks.ftbchunksnoforceload.mixin.client;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.Optional;
 
-@Mixin(targets = "dev.ftb.mods.ftbchunks.client.gui.map.ChunkScreenPanel$ChunkButton")
+@Pseudo
+@Mixin(targets = "dev.ftb.mods.ftbchunks.client.gui.map.ChunkScreenPanel$ChunkButton", remap = false)
 abstract class ChunkButtonMixin {
     @Redirect(
             method = {"drawBackground", "addMouseOverText"},
