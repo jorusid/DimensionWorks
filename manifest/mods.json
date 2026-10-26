@@ -446,6 +446,16 @@
       "url": "https://github.com/szx-jn/DimensionWorks/tree/main/mods/dimensionworks-drop-lifetime"
     },
     {
+      "id": "dimensionworks_ftbchunks_no_forceload",
+      "name": "DimensionWorks FTB Chunks Force-load Disable",
+      "source": "in-repo",
+      "project_path": "mods/dimensionworks-ftbchunks-no-forceload",
+      "version": "0.1.0",
+      "required": true,
+      "environment": "both",
+      "url": "https://github.com/szx-jn/DimensionWorks/tree/main/mods/dimensionworks-ftbchunks-no-forceload"
+    },
+    {
       "id": "dimensionworks_localization",
       "name": "DimensionWorks 简体中文汉化",
       "source": "in-repo",
