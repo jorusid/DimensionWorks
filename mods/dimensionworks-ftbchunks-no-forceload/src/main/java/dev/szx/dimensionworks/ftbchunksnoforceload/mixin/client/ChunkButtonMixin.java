@@ -1,6 +1,7 @@
 package dev.szx.dimensionworks.ftbchunksnoforceload.mixin.client;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
@@ -16,7 +17,7 @@ abstract class ChunkButtonMixin {
             ),
             require = 0
     )
-    private Optional<?> dimensionworks$hideForceLoadStatus(Object chunk) {
+    private Optional<?> dimensionworks$hideForceLoadStatus(@Coerce Object chunk) {
         return Optional.empty();
     }
 }
