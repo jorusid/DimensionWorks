@@ -349,7 +349,7 @@ jobs:
               )
           print(f"DimensionWorks v{os.environ['PACK_VERSION']} 版本更新：")
           if entries:
-              print("\\n".join(entries))
+              print("\n".join(entries))
           else:
               print("本次为底层兼容性或打包更新，暂无单独更新条目。")
           PY
