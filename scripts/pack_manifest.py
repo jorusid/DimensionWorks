@@ -280,7 +280,16 @@ def make_client_manifest(
     base: str | None = None,
 ) -> UpdateManifest:
     resolved_base = f"v{version}" if base is None else base
-    entries = [_client_index_entry(index_entry) for index_entry in index_entries]
+    # Modrinth indexes retain server-only files with env.client="unsupported".
+    # Standalone client updates must honor the same side filter as launchers,
+    # otherwise a server-only mod such as LuckPerms is downloaded to clients.
+    client_index_entries = []
+    for index_entry in index_entries:
+        environment = index_entry.get("env")
+        if isinstance(environment, dict) and environment.get("client") == "unsupported":
+            continue
+        client_index_entries.append(index_entry)
+    entries = [_client_index_entry(index_entry) for index_entry in client_index_entries]
     index_path = staging_root / "modrinth.index.json"
     _assert_regular_file(index_path)
     entries.append(
