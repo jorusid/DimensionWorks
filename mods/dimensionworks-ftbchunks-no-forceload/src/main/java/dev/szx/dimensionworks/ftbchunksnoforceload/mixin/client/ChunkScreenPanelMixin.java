@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.Set;
 
 @Pseudo
-@Mixin(targets = "dev.ftb.mods.ftbchunks.client.gui.map.ChunkScreenPanel", remap = false)
+@Mixin(targets = "dev.ftb.mods.ftbchunks.client.gui.ChunkScreenPanel", remap = false)
 abstract class ChunkScreenPanelMixin {
     @Shadow @Final private Set<?> selectedChunks;
 
@@ -21,7 +21,7 @@ abstract class ChunkScreenPanelMixin {
             method = "mouseReleased",
             at = @At(
                     value = "INVOKE",
-                    target = "Ldev/ftb/mods/ftblibrary/client/gui/widget/Panel;mouseReleased(Ldev/ftb/mods/ftblibrary/client/gui/input/MouseButton;)V",
+                    target = "Ldev/ftb/mods/ftblibrary/ui/Panel;mouseReleased(Ldev/ftb/mods/ftblibrary/ui/input/MouseButton;)V",
                     shift = At.Shift.AFTER
             ),
             cancellable = true,
