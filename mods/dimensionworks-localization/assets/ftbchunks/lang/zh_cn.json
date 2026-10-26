@@ -1,0 +1,16 @@
+{
+  "ftbchunks.team_prop_defaults": "队伍属性默认值",
+  "ftbchunks.team_prop_defaults.def_allow_explosions": "默认允许爆炸破坏地形",
+  "ftbchunks.team_prop_defaults.def_block_edit": "默认允许编辑方块",
+  "ftbchunks.team_prop_defaults.def_block_edit_interact": "默认允许编辑方块与交互",
+  "ftbchunks.team_prop_defaults.def_block_interact": "默认允许方块交互",
+  "ftbchunks.team_prop_defaults.def_claim_visibility": "默认区块认领可见性",
+  "ftbchunks.team_prop_defaults.def_entity_attack": "默认允许攻击实体",
+  "ftbchunks.team_prop_defaults.def_entity_interact": "默认允许与实体交互",
+  "ftbchunks.team_prop_defaults.def_fake_player_ids": "默认允许的假人 UUID",
+  "ftbchunks.team_prop_defaults.def_fake_players": "默认允许假人",
+  "ftbchunks.team_prop_defaults.def_mob_griefing": "默认允许生物破坏方块",
+  "ftbchunks.team_prop_defaults.def_named_fake_players": "默认允许的假人名称",
+  "ftbchunks.team_prop_defaults.def_player_visibility": "默认玩家可见性",
+  "ftbchunks.team_prop_defaults.def_pvp": "默认允许玩家间战斗"
+}
