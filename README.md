@@ -4,7 +4,7 @@
 
 维度工序（DimensionWorks）是一款以多维度探索、工业化生产、自动化资源获取和跨维度物流为核心的 Minecraft 工业整合包。
 
-> **当前版本：0.1.42** · [查看最新正式版与下载文件](https://github.com/szx-jn/DimensionWorks/releases/latest)
+> **当前正式版：** [![最新正式版](https://img.shields.io/github/v/release/szx-jn/DimensionWorks?label=%E6%9C%80%E6%96%B0%E6%AD%A3%E5%BC%8F%E7%89%88)](https://github.com/szx-jn/DimensionWorks/releases/latest) · [查看全部发行版](https://github.com/szx-jn/DimensionWorks/releases)
 
 ## 下载
 
