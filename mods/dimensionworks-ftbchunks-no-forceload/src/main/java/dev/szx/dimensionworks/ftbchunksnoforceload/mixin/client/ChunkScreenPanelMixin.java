@@ -10,7 +10,6 @@ import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.lang.reflect.ReflectiveOperationException;
 import java.util.Set;
 
 @Pseudo
