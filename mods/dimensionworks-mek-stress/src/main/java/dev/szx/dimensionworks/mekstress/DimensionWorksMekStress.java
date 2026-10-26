@@ -75,6 +75,10 @@ public final class DimensionWorksMekStress {
         }
     }
 
+    public static final RegistryObject<Item> GAS_OUTPUT_ITEM = ITEMS.register(
+        "gas_output", () -> new Item(new Item.Properties().stacksTo(1))
+    );
+
     public static final RegistryObject<BlockEntityType<MemoryDriveBlockEntity>> MEMORY_DRIVE_BLOCK_ENTITY =
         BLOCK_ENTITIES.register("memory_drive", DimensionWorksMekStress::createMemoryDriveBlockEntity);
 
