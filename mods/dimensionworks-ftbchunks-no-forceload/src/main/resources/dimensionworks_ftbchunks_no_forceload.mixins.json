@@ -9,7 +9,8 @@
     "ClaimedChunkManagerImplMixin"
   ],
   "client": [
-    "client.ChunkButtonMixin"
+    "client.ChunkButtonMixin",
+    "client.ChunkScreenPanelMixin"
   ],
   "injectors": {
     "defaultRequire": 1
