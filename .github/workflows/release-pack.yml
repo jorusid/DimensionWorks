@@ -12,6 +12,22 @@ on:
         required: false
         default: false
         type: boolean
+      release_features:
+        description: "新增功能；每行一条，如 feat(webpanel): 新增设置页面"
+        required: false
+        type: string
+      release_fixes:
+        description: "问题修复；每行一条，如 fix(daemon): 修复启动异常"
+        required: false
+        type: string
+      release_performance:
+        description: "性能优化；每行一条，如 perf(webpanel): 优化加载速度"
+        required: false
+        type: string
+      release_other:
+        description: "其他变更；每行一条，如 docs: 更新使用说明"
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -309,10 +325,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PACK_VERSION: ${{ steps.version.outputs.version }}
           TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_FEATURES: ${{ inputs.release_features }}
+          RELEASE_FIXES: ${{ inputs.release_fixes }}
+          RELEASE_PERFORMANCE: ${{ inputs.release_performance }}
+          RELEASE_OTHER: ${{ inputs.release_other }}
         run: |
           set -euo pipefail
           title="DimensionWorks ${PACK_VERSION}"
-          notes="Minecraft 1.20.1 Forge 客户端、服务端、Windows EXE 更新器、Shell 更新器与增量资产。本次为显式底层兼容性小版本，不代表新维度完成。"
+          notes="$(python3 - <<'PY'
+          import os
+          sections = (
+              "RELEASE_FEATURES",
+              "RELEASE_FIXES",
+              "RELEASE_PERFORMANCE",
+              "RELEASE_OTHER",
+          )
+          entries = []
+          for key in sections:
+              entries.extend(
+                  line.strip()
+                  for line in os.environ.get(key, "").splitlines()
+                  if line.strip()
+              )
+          print(f"DimensionWorks v{os.environ['PACK_VERSION']} 版本更新：")
+          if entries:
+              print("\\n".join(entries))
+          else:
+              print("本次为底层兼容性或打包更新，暂无单独更新条目。")
+          PY
+          )"
           assets=(
             "dist/DimensionWorks-${PACK_VERSION}.mrpack"
             "dist/DimensionWorks-${PACK_VERSION}-delta.zip"
