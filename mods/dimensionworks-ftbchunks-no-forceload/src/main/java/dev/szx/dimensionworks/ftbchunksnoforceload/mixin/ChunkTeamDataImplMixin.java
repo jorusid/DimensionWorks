@@ -16,10 +16,9 @@ abstract class ChunkTeamDataImplMixin {
                     false,
                     getClass().getClassLoader()
             );
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            Object denied = Enum.valueOf((Class<? extends Enum>) problemClass.asSubclass(Enum.class), "NOT_ENOUGH_POWER");
+            Object denied = problemClass.getField("NOT_ENOUGH_POWER").get(null);
             cir.setReturnValue(denied);
-        } catch (ReflectiveOperationException | IllegalArgumentException exception) {
+        } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException("Unable to resolve FTB Chunks force-load denial result", exception);
         }
     }
