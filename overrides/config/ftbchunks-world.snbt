@@ -1,6 +1,6 @@
 # DimensionWorks server defaults for FTB Chunks.
 # Claiming, map, waypoints, and claim protection remain enabled.
-# A zero per-player force-load limit prevents FTB Chunks from force-loading chunks.
+# A zero per-player limit blocks force-loading unless a numeric permission overrides it.
 
 {
   disable_protection: false
