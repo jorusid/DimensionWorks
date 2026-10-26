@@ -6,7 +6,9 @@
   "refmap": "dimensionworks_ftbchunks_no_forceload.refmap.json",
   "mixins": [
     "ChunkTeamDataImplMixin",
-    "ClaimedChunkManagerImplMixin"
+    "ClaimedChunkManagerImplMixin",
+    "FTBChunksExpectedMixin",
+    "ClaimedChunkImplMixin"
   ],
   "client": [
     "client.ChunkButtonMixin",
