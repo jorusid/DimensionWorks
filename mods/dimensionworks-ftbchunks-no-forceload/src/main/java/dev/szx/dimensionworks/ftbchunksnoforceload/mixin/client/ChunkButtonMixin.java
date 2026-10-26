@@ -12,7 +12,7 @@ import java.util.Optional;
 @Mixin(targets = "dev.ftb.mods.ftbchunks.client.gui.map.ChunkScreenPanel$ChunkButton", remap = false)
 abstract class ChunkButtonMixin {
     @Redirect(
-            method = {"drawBackground", "addMouseOverText"},
+            method = {"drawBackground", "addMouseOverText", "mouseScrolled"},
             at = @At(
                     value = "INVOKE",
                     target = "Ldev/ftb/mods/ftbchunks/client/map/MapChunk;getForceLoadedDate()Ljava/util/Optional;"
