@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import java.util.Optional;
 
 @Pseudo
-@Mixin(targets = "dev.ftb.mods.ftbchunks.client.gui.map.ChunkScreenPanel$ChunkButton", remap = false)
+@Mixin(targets = "dev.ftb.mods.ftbchunks.client.gui.ChunkScreenPanel$ChunkButton", remap = false)
 abstract class ChunkButtonMixin {
     @Redirect(
             method = {"drawBackground", "addMouseOverText", "mouseScrolled"},
