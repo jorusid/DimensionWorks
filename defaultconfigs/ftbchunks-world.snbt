@@ -1,0 +1,12 @@
+# DimensionWorks default server config for FTB Chunks.
+# Keep claiming, map, waypoints, and claim protection enabled.
+# A zero per-player limit blocks FTB Chunks force-loading unless explicitly overridden
+# by a numeric ftbchunks.max_force_loaded permission in the permissions provider.
+
+{
+  disable_protection: false
+  force_disable_minimap: false
+  force_load_mode: "never"
+  max_force_loaded_chunks: 0
+  hard_team_force_limit: 0
+}
