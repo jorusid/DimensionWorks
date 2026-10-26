@@ -605,6 +605,18 @@
       "url": "https://modrinth.com/mod/ferrite-core"
     },
     {
+      "id": "ftb-chunks",
+      "name": "FTB Chunks",
+      "source": "curseforge",
+      "project_slug": "ftb-chunks-forge",
+      "file_id": 8216874,
+      "file_name": "ftb-chunks-forge-2001.3.8.jar",
+      "version": "2001.3.8",
+      "required": true,
+      "environment": "both",
+      "url": "https://www.curseforge.com/minecraft/mc-mods/ftb-chunks-forge"
+    },
+    {
       "id": "ftb-essentials",
       "name": "FTB Essentials",
       "source": "curseforge",
