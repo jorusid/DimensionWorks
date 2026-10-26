@@ -415,6 +415,33 @@ is_preserved_server() {
     return 1
 }
 
+# Update only this policy file in an existing world; preserve all other world data.
+apply_ftbchunks_force_load_policy() {
+    [[ "$KIND" == "server" ]] || return 0
+
+    local policy="$PACKAGE_ROOT/defaultconfigs/ftbchunks-world.snbt"
+    [[ -f "$policy" ]] || policy="$ROOT_DIR/defaultconfigs/ftbchunks-world.snbt"
+    [[ -f "$policy" ]] || return 0
+    [[ -f "$ROOT_DIR/server.properties" ]] || return 0
+
+    local level_name target relative
+    level_name="$(sed -n 's/^[[:space:]]*level-name[[:space:]]*=[[:space:]]*//p' \
+        "$ROOT_DIR/server.properties" | head -n 1 | tr -d '\r')"
+    [[ -n "$level_name" ]] || die "server.properties 缺少 level-name，无法更新 FTB Chunks 策略"
+    validate_relative_path "$level_name"
+    [[ -d "$ROOT_DIR/$level_name" ]] || return 0
+    [[ -d "$ROOT_DIR/$level_name/serverconfig" ]] || return 0
+
+    relative="$level_name/serverconfig/ftbchunks-world.snbt"
+    target="$ROOT_DIR/$relative"
+    ensure_no_symlink "$relative"
+    if [[ -f "$target" ]] && cmp -s -- "$policy" "$target"; then
+        return 0
+    fi
+    printf '[策略迁移] 更新 %s（仅覆盖 FTB Chunks 配置，其余世界数据不变）\n' "$relative" >&2
+    log_change "$target" "$policy"
+}
+
 bootstrap_state() {
     local state_tmp="$UPDATE_DIR/bootstrap.tsv" root relative digest
     {
@@ -924,6 +951,8 @@ main() {
             rm -f -- "$current" || die "无法删除旧受管文件：$path"
         done < "$WORK_DIR/deletes"
     fi
+
+    apply_ftbchunks_force_load_policy
 
     if [[ ! -f "$ROOT_DIR/VERSION" ]] || [[ "$(tr -d '\r\n' < "$ROOT_DIR/VERSION")" != "$TARGET_VERSION" ]]; then
         local version_tmp="$UPDATE_DIR/VERSION.tmp.$$"
