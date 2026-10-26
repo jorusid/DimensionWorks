@@ -32,6 +32,8 @@ public abstract class BasinGasIntegrationMixin implements IGasHandler {
     @Unique
     private GasStack dimensionworks$gas = GasStack.EMPTY;
     @Unique
+    private long dimensionworks$lastGasLeakTick;
+    @Unique
     private LazyOptional<IGasHandler> dimensionworks$gasCapability =
         LazyOptional.of(() -> (IGasHandler) (Object) this);
 
@@ -90,21 +92,28 @@ public abstract class BasinGasIntegrationMixin implements IGasHandler {
         dimensionworks$gas = new GasStack(gas, stored + amount);
         BasinBlockEntity self = (BasinBlockEntity) (Object) this;
         self.setChanged();
+        dimensionworks$applyLeakIfDue(self);
         self.notifyUpdate();
         return true;
     }
 
     @Inject(method = "tick", at = @At("TAIL"), remap = false)
     private void dimensionworks$leakExposedGas(CallbackInfo ci) {
-        BasinBlockEntity self = (BasinBlockEntity) (Object) this;
+        dimensionworks$applyLeakIfDue((BasinBlockEntity) (Object) this);
+    }
+
+    @Unique
+    private void dimensionworks$applyLeakIfDue(BasinBlockEntity self) {
         if (self.getLevel() == null || self.getLevel().isClientSide || dimensionworks$gas.isEmpty()) {
             return;
         }
-        if (self.getLevel().getGameTime() % 20 != 0
+        long now = self.getLevel().getGameTime();
+        if (now - dimensionworks$lastGasLeakTick < 20
             || !self.getLevel().canSeeSky(self.getBlockPos().above())) {
             return;
         }
 
+        dimensionworks$lastGasLeakTick = now;
         long loss = 100L + self.getLevel().getRandom().nextInt(101);
         long remaining = Math.max(0L, dimensionworks$gas.getAmount() - loss);
         dimensionworks$gas = remaining == 0 ? GasStack.EMPTY : new GasStack(dimensionworks$gas, remaining);
