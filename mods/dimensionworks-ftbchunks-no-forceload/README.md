@@ -12,3 +12,5 @@ Existing force-load metadata may remain in FTB Chunks team data, but this mod pr
 The mod deliberately does not patch Minecraft's generic chunk-ticket API, so the pack's dedicated force-load blocks and other mods are not globally disabled.
 
 Standalone Gradle builds resolve ForgeGradle and Mixin from their official plugin repositories.
+
+The Mixin targets are declared as external optional targets at compile time; the mod metadata still requires the pack's pinned FTB Chunks version at runtime.
