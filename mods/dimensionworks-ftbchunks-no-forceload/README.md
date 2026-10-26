@@ -16,3 +16,5 @@ The mod deliberately does not patch Minecraft's generic chunk-ticket API, so the
 Standalone Gradle builds resolve ForgeGradle and Mixin from their official plugin repositories. The complete client and server guard set is released as mod version 0.1.2.
 
 The Mixin targets are declared as external optional targets at compile time; the mod metadata still requires the pack's pinned FTB Chunks version at runtime.
+
+A full server restart is required after installing or updating this mod. The server-side guards are authoritative: even if a client sends a force-load request directly, FTB Chunks rejects it before a claim can become force-loaded. The GUI mixins target the package names used by the pack's pinned 2001.3.8 release.
