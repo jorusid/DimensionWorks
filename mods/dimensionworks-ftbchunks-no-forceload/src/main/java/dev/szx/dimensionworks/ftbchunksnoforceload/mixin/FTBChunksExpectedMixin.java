@@ -28,7 +28,7 @@ abstract class FTBChunksExpectedMixin {
             CallbackInfo ci
     ) {
         // Always allow ticket removal; reject every FTB Chunks ticket addition.
-        if (add) {
+        if (add && "ftbchunks".equals(modId)) {
             ci.cancel();
         }
     }
