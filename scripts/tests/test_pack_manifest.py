@@ -219,7 +219,14 @@ class MakeManifestTest(unittest.TestCase):
                         "path": "mods/remote.jar",
                         "hashes": {"sha512": "a" * 128},
                         "downloads": ["https://example.com/remote.jar"],
-                    }
+                        "env": {"client": "required", "server": "required"},
+                    },
+                    {
+                        "path": "mods/LuckPerms-Forge-5.4.102.jar",
+                        "hashes": {"sha512": "c" * 128},
+                        "downloads": ["https://example.com/LuckPerms.jar"],
+                        "env": {"client": "unsupported", "server": "required"},
+                    },
                 ],
                 staging,
                 version="1.2.3",
@@ -248,6 +255,7 @@ class MakeManifestTest(unittest.TestCase):
             "overrides/config/example.cfg",
         )
         self.assertEqual(by_path["modrinth.index.json"].source, "modrinth.index.json")
+        self.assertNotIn("mods/LuckPerms-Forge-5.4.102.jar", by_path)
 
     def test_client_manifest_rejects_symlinks(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
