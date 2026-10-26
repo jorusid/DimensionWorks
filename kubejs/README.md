@@ -79,3 +79,5 @@ server_scripts/basic_mineral_propagation.js 为 16 种目标资源配置三条�
 - Create 配方可将内部物品 `dimensionworks_mek_stress:gas_output` 作为唯一产物，并在物品 NBT 指定 `Gas`（气体注册 ID）和 `Amount`（mB 数量）；标记会转为真正的 Mekanism 气体，不会作为物品掉落。
 - `server_scripts/chemistry_gas_recipes.js` 提供煤经烈焰人燃烧室加热生成 1,000 mB 二氧化碳的示例。
 - 工作盆上方可见天空时，每 20 游戏刻随机损失 100–200 mB；封闭工作盆不损失。该规则只作用于工作盆产出的气体，不影响液体，也不允许管道向工作盆灌入气体。
+
+其他气体配方可复用同一输出物品，将 `Gas` 改为对应注册 ID、`Amount` 改为 mB 数量。工作盆缓冲同一时间只存一种气体；切换气体前先用 Mekanism 管道抽空。
