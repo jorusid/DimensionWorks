@@ -429,7 +429,7 @@ apply_ftbchunks_force_load_policy() {
         "$ROOT_DIR/server.properties" | head -n 1 | tr -d '\r')"
     [[ -n "$level_name" ]] || die "server.properties 缺少 level-name，无法更新 FTB Chunks 策略"
     # level-name is a single world-directory component, not a manifest path.
-    # Validate it directly rather than applying manifest-path rules.
+    # Validate it directly rather than applying manifest-path rules; single-component world names are valid.
     [[ "$level_name" != "." && "$level_name" != ".." &&
        "$level_name" != */* && "$level_name" != *"\\"* &&
        "$level_name" != *:* && "$level_name" != *$'\r'* &&
