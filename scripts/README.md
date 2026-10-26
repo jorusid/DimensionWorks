@@ -46,7 +46,7 @@ python3 scripts/package_mrpack.py --dimension-complete  # 0.1.2 -> 0.2.0
 python3 scripts/package_mrpack.py --major-bump --version 1.0.0
 ```
 
-脚本以 `manifest/mods.json` 为唯一 Mod 清单，远程文件使用固定版本和固定下载地址。仓库的 `config/`、`defaultconfigs/`、`kubejs/`、`resourcepacks/` 先作为基础写入 `overrides/`，随后直接叠加游戏实例的 `config/`、`defaultconfigs/`、`local/`、`kubejs/config/`，以及 `options.txt`、`log4j2.xml`、`rhino.local.properties`、`CustomSkinLoader/CustomSkinLoader.json`、`minemenu/menu.json`。实例文件同名时优先，确保游戏内当前配置进入整合包。
+脚本以 `manifest/mods.json` 为唯一 Mod 清单，远程文件使用固定版本和固定下载地址。 客户端独立更新清单会再次依据 `modrinth.index.json` 的 `env.client` 过滤 `unsupported` 项，避免把 LuckPerms 等服务端专用 Mod 下载到客户端；更新器会按旧/新清单差异更新文件，并删除旧版本受管清单中已移除的文件，同时保留存档和用户私有数据。仓库的 `config/`、`defaultconfigs/`、`kubejs/`、`resourcepacks/` 先作为基础写入 `overrides/`，随后直接叠加游戏实例的 `config/`、`defaultconfigs/`、`local/`、`kubejs/config/`，以及 `options.txt`、`log4j2.xml`、`rhino.local.properties`、`CustomSkinLoader/CustomSkinLoader.json`、`minemenu/menu.json`。实例文件同名时优先，确保游戏内当前配置进入整合包。
 
 光影不由仓库嵌入。`manifest/shaderpacks.json` 固定记录 Modrinth 版本 ID 或 CurseForge 文件 ID、文件名、大小和 SHA-1/SHA-512；打包时这些文件直接写入 `.mrpack` 下载索引，`shaderpacks/` 不再作为 override 复制。Chocapic13 V6 按作者原始总包下载，安装后在游戏内先解压再选择 High、Low 等预设。
 
