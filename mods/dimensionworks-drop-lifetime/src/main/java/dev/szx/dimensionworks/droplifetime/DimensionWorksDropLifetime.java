@@ -68,15 +68,17 @@ public final class DimensionWorksDropLifetime {
             try {
                 Class<?> apiClass = Class.forName("dev.ftb.mods.ftbchunks.api.FTBChunksAPI");
                 Object api = apiClass.getMethod("api").invoke(null);
-                if (!Boolean.TRUE.equals(apiClass.getMethod("isManagerLoaded").invoke(api))) {
+                Class<?> apiInterface = Class.forName("dev.ftb.mods.ftbchunks.api.FTBChunksAPI$API");
+                if (!Boolean.TRUE.equals(apiInterface.getMethod("isManagerLoaded").invoke(api))) {
                     return false;
                 }
 
-                Object manager = apiClass.getMethod("getManager").invoke(api);
+                Object manager = apiInterface.getMethod("getManager").invoke(api);
                 Class<?> chunkDimPosClass = Class.forName("dev.ftb.mods.ftblibrary.math.ChunkDimPos");
                 Constructor<?> positionConstructor = chunkDimPosClass.getConstructor(Level.class, BlockPos.class);
                 Object chunkPosition = positionConstructor.newInstance(level, pos);
-                Method getChunk = manager.getClass().getMethod("getChunk", chunkDimPosClass);
+                Class<?> managerInterface = Class.forName("dev.ftb.mods.ftbchunks.api.ClaimedChunkManager");
+                Method getChunk = managerInterface.getMethod("getChunk", chunkDimPosClass);
                 return getChunk.invoke(manager, chunkPosition) != null;
             } catch (ReflectiveOperationException | LinkageError exception) {
                 return false;
