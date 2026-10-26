@@ -643,6 +643,7 @@ class ShellServerFixtureTest(unittest.TestCase):
             (instance / "custom_world" / "serverconfig").mkdir(parents=True)
             (instance / "custom_world" / "level.dat").write_bytes(b"keepInventory=true")
             (instance / "custom_world" / "serverconfig" / "create-server.toml").write_bytes(b"maxRotationSpeed=10240")
+            (instance / "custom_world" / "serverconfig" / "ftbchunks-world.snbt").write_bytes(b"old force-load policy")
             (instance / "server.properties").write_text("level-name=custom_world\n", encoding="ascii")
             (instance / "eula.txt").write_text("eula=true\n", encoding="ascii")
             (instance / "config" / "luckperms").mkdir(parents=True)
@@ -659,6 +660,7 @@ class ShellServerFixtureTest(unittest.TestCase):
                     "config/luckperms/luckperms.conf": b"bad-luckperms-default",
                     "config/luckperms/luckperms-h2-v2.mv.db": b"bad-luckperms-database",
                     "defaultconfigs/create-server.toml": b"bad-world-default",
+                    "defaultconfigs/ftbchunks-world.snbt": b"force_load_disabled",
                     "server.properties": b"bad-default",
                     "eula.txt": b"bad-default",
                 },
@@ -702,6 +704,7 @@ class ShellServerFixtureTest(unittest.TestCase):
             self.assertEqual((instance / "mods" / "new.jar").read_bytes(), b"new")
             self.assertEqual((instance / "custom_world" / "level.dat").read_bytes(), b"keepInventory=true")
             self.assertEqual((instance / "custom_world" / "serverconfig" / "create-server.toml").read_bytes(), b"maxRotationSpeed=10240")
+            self.assertEqual((instance / "custom_world" / "serverconfig" / "ftbchunks-world.snbt").read_bytes(), b"force_load_disabled")
             self.assertEqual((instance / "config" / "server.cfg").read_bytes(), b"user-edited-config")
             self.assertEqual((instance / "config" / "luckperms" / "luckperms.conf").read_bytes(), b"user-luckperms-config")
             self.assertEqual((instance / "config" / "luckperms" / "luckperms-h2-v2.mv.db").read_bytes(), b"user-luckperms-database")
