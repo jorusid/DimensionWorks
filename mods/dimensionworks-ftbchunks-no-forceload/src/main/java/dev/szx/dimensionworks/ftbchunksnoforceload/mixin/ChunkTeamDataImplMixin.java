@@ -27,6 +27,9 @@ abstract class ChunkTeamDataImplMixin {
 
     @Inject(method = "updateChunkTickets", at = @At("HEAD"), cancellable = true)
     private void dimensionworks$disableTicketRestoration(boolean load, CallbackInfo ci) {
-        ci.cancel();
+        // Never restore/add FTB Chunks tickets, but allow removal of existing tickets.
+        if (load) {
+            ci.cancel();
+        }
     }
 }
