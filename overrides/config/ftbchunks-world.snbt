@@ -1,0 +1,16 @@
+# DimensionWorks server defaults for FTB Chunks.
+# Claims and protection remain enabled; player force-loading is disabled.
+
+{
+  disable_protection: false
+  force_disable_minimap: false
+  max_claimed_chunks: 100
+  party_limit_mode: "largest"
+
+  force_loading: {
+    force_load_mode: "never"
+    max_force_loaded_chunks: 0
+    hard_team_force_limit: 0
+    max_idle_days_before_unforce: 0.0d
+  }
+}
