@@ -10,6 +10,7 @@
     "appliedcreate.MEGearboxBlockEntityMixin",
     "appliedcreate.StorageCellsMixin",
     "create.KineticNetworkMixin",
+    "create.BasinGasIntegrationMixin",
     "mek.MachineEnergyContainerMixin",
     "mek.OutputHelperMixin",
     "mek.JadeDataProviderMixin",
