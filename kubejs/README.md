@@ -63,3 +63,11 @@ server_scripts/basic_mineral_propagation.js 为 16 种目标资源配置三条�
 ## 烈焰蛋糕红石成本
 
 `server_scripts/blaze_cake_redstone_cost.js` 统一替换所有产出 `create:blaze_cake_base` 的配方，要求鸡蛋、糖、灰烬粉（Create Cinder Flour）和 1 份红石粉经机械压制合成底料。原版将底料注入 250 mB 熔岩制成烈焰蛋糕的配方保留不变；这样附属模组若提供其他底料配方，也不会绕过红石成本。
+
+## 高中化学核心气体
+
+- `startup_scripts/chemistry_gases.js` 注册 Mekanism 原版未提供的核心化学品气体，使用独立的 `dimensionworks:` 命名空间，避免覆盖 Mekanism 原版气体。
+- `server_scripts/chemistry_gas_recipes.js` 添加对应的 Mekanism 化学氧化室、化学灌注器、加压反应室与太阳中子活化器配方。
+- 当前新增：二氧化碳、一氧化碳、氮气、氨气、一氧化氮、二氧化氮、一氧化二氮、硫化氢、甲烷、乙炔、臭氧、硝酸；氢气、氧气、氯气、二氧化硫、三氧化硫、氯化氢、乙烯等复用 Mekanism 原生化学品。
+- 这些 Mekanism 气体是游戏内化学品储罐类型；注册为 gas 不代表该物质在常温常压下必然是气态。颜色用于区分，不代表真实颜色。
+- 获取方式为整合包生产线的简化模型，并非每条配方都逐原子复刻实验室制备；继续扩充时应优先保持化学反应方向、元素守恒和工业流程合理性。
