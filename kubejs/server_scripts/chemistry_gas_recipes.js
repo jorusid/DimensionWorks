@@ -3,6 +3,13 @@
 // 新气体由 startup_scripts/chemistry_gases.js 注册。
 
 ServerEvents.recipes(event => {
+  // Create 工作盆通过内部标记物品输出 Mekanism 气体；标记会被 Java 集成转换为气体缓冲。
+  // 露天时每秒随机损失 100–200 mB，封闭时不损失，液体规则不变。
+  event.recipes.create.mixing(
+    Item.of('dimensionworks_mek_stress:gas_output', { Gas: 'dimensionworks:carbon_dioxide', Amount: 1000 }),
+    ['minecraft:coal']
+  ).heated().id('dimensionworks:chemistry/create/carbon_dioxide_from_coal')
+
   const item = id => ({ ingredient: { item: id } })
   const gas = (id, amount) => ({ gas: id, amount: amount })
   const fluid = (id, amount) => ({ fluid: id, amount: amount })
