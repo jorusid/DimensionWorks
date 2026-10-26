@@ -1,0 +1,22 @@
+package dev.szx.dimensionworks.ftbchunksnoforceload.mixin.client;
+
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
+
+import java.util.Optional;
+
+@Mixin(targets = "dev.ftb.mods.ftbchunks.client.gui.map.ChunkScreenPanel$ChunkButton")
+abstract class ChunkButtonMixin {
+    @Redirect(
+            method = {"drawBackground", "addMouseOverText"},
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ldev/ftb/mods/ftbchunks/client/map/MapChunk;getForceLoadedDate()Ljava/util/Optional;"
+            ),
+            require = 0
+    )
+    private Optional<?> dimensionworks$hideForceLoadStatus(Object chunk) {
+        return Optional.empty();
+    }
+}
