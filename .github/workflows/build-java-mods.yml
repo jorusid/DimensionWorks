@@ -25,6 +25,7 @@ jobs:
         module:
           - dimensionworks-cave-factory
           - dimensionworks-drop-lifetime
+          - dimensionworks-ftbchunks-no-forceload
           - dimensionworks-localization
           - dimensionworks-maid-ae-crank
           - dimensionworks-mek-stress
